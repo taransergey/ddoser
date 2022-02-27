@@ -29,7 +29,7 @@ async def make_request(url: str, proxy: str, verbose: bool, timeout: int):
                 async with session.get(url) as response:
                     await response.text()
                     print(response.status)
-    except (aiohttp.ClientError, asyncio.exceptions.TimeoutError) as error:
+    except Exception as error:
         print(f'Url: {url} Proxy: {proxy} Error: {error}', file=sys.stderr)
         STATS[f'{type(error)} {error}'] += 1
     else:
