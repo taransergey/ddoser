@@ -3,7 +3,7 @@ import asyncio
 import sys
 from collections import defaultdict
 from itertools import cycle
-from typing import Iterable
+from typing import Iterable, List, Tuple
 
 import aiohttp
 import click
@@ -44,7 +44,7 @@ def get_proxy(proxy_iterator: Iterable[str]) -> str:
         return None
 
 
-async def amain(target_url: str, timeout: int, concurrency: int, count: int, verbose: bool, proxies: list[tuple[str, str, int]]):
+async def amain(target_url: str, timeout: int, concurrency: int, count: int, verbose: bool, proxies: List[Tuple[str, str, int]]):
     for _1 in range(count):
         coroutines = []
         proxy_iterator = cycle(proxies or [])
@@ -62,7 +62,7 @@ async def amain(target_url: str, timeout: int, concurrency: int, count: int, ver
 @click.option('--count', help='requests count', type=int, default=1)
 @click.option('--timeout', help='requests timeout', type=int, default=5)
 @click.option('--verbose', help='Show verbose log', is_flag=True, default=False)
-def main(target_url, proxy_url, proxy_file, concurrency, count, timeout, verbose):
+def main(target_url: str, proxy_url: str, proxy_file: str, concurrency: int, count: int, timeout: int, verbose: bool):
     proxies = load_proxies(proxy_file, proxy_url)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(amain(target_url, timeout, concurrency, count, verbose, proxies))
@@ -72,7 +72,7 @@ def main(target_url, proxy_url, proxy_file, concurrency, count, timeout, verbose
     print(f'success: {STATS["success"]}')
 
 
-def load_proxies(proxy_file, proxy_url):
+def load_proxies(proxy_file: str, proxy_url: str) -> List[Tuple[str, str, int]]:
     if proxy_url:
         proxy_data = requests.get(proxy_url).text
     elif proxy_file:
