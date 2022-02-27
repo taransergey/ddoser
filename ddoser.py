@@ -31,7 +31,7 @@ async def make_request(url: str, proxy: str, verbose: bool, timeout: int):
                     print(response.status)
     except Exception as error:
         print(f'Url: {url} Proxy: {proxy} Error: {error}', file=sys.stderr)
-        STATS[f'{type(error)} {error}'] += 1
+        STATS[f'{type(error)}'] += 1
     else:
         STATS['success'] += 1
 
