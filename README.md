@@ -27,4 +27,9 @@ ip2:port2#sock4
 ...
 ipN:portN#sock4
 ```
-**ddoser** supports only sock proxy, also can work directly without proxy
+### Example cmd
+```shell
+./ddoser.py --target-url https://some-domain.ru/ --concurrency 300 --timeout 60 --proxy-file proxy.list --count 0
+```
+## Note
+**ddoser** supports only sock proxy, also can start it directly without proxy
