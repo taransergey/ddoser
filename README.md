@@ -12,7 +12,7 @@ Usage: ddoser.py [OPTIONS]
 
 Options:
   --target-url TEXT        ddos target url
-  --target-urls-file TEXT  path to file contains urls to ddos
+  --target-urls-file TEXT  path or url to file contains urls to ddos
   --proxy-url TEXT         url to proxy resourse
   --proxy-file TEXT        path to file with proxy list
   --concurrency INTEGER    concurrency level
