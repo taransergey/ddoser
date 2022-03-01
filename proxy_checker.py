@@ -6,6 +6,7 @@ from typing import Iterable, List, Tuple, TextIO
 
 import aiohttp
 import click
+import uvloop
 from aiohttp_socks import ProxyConnector
 
 from commons import config_logger, set_limits, load_proxies
@@ -58,6 +59,7 @@ def main(
 ):
     config_logger(verbose, log_to_stdout)
     set_limits()
+    uvloop.install()
     loop = asyncio.get_event_loop()
     proxies = load_proxies(None, proxy_url)
     loop.run_until_complete(amain(proxies, check_url, result_proxy_file, concurrency, timeout))
