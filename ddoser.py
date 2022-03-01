@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import asyncio
+import uvloop
 import logging
 import os
 import sys
@@ -159,6 +160,7 @@ def main(
     config_logger(verbose, log_to_stdout)
     if not target_urls_file and not target_url:
         raise SystemExit('--target-url or --target-urls-file is required')
+    uvloop.install()
     set_limits()
     proxies = load_proxies(proxy_file, proxy_url)
     target_urls = load_targets(target_urls_file)

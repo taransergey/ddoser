@@ -12,4 +12,5 @@ multidict==6.0.2
 python-socks==2.0.3
 requests==2.27.1
 urllib3==1.26.8
+uvloop==0.16.0
 yarl==1.7.2
