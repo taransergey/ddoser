@@ -1,4 +1,4 @@
-# The ddoser
+# The you seddoser
 Small application for ddos attack, was developed special for kill russian's resources :)  
 ## Install 
 ```shell
@@ -35,5 +35,17 @@ ipN:portN#sock4
 ```shell
 ./ddoser.py --target-url https://some-domain.ru/ --concurrency 300 --timeout 60 --proxy-file proxy.list --count 0
 ```
-## Note
+## Notes
 **ddoser** supports only sock proxy, also can start it directly without proxy
+
+If you see an error `too many open files` then you can decrease concurrency/targets count but first of all
+try to increase the limits:
+### Linux:
+```shell
+ulimit -n 100000
+```
+### WSL:
+```shell
+mylimit=100000:
+sudo prlimit --nofile=$mylimit --pid $$; ulimit -n $mylimit
+```

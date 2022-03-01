@@ -124,12 +124,13 @@ def set_limits():
             return
         except:
             limit -= ((hard - soft) / 100) or 1
-    
+
     print('Can not change limit of open files, if you get a message "too many open files"')
+    print(f'Current limit is: {soft}')
     print('In linux/unix/mac you should run')
     print('\t$ ulimit -n 100000')
-    print('In windows:')
-    print('\t$ mylimit=8000:')
+    print('In WSL:')
+    print('\t$ mylimit=10000:')
     print('\t$ sudo prlimit --nofile=$mylimit --pid $$; ulimit -n $mylimit')
 
 
