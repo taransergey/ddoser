@@ -1,5 +1,16 @@
 # The you seddoser
 Small application for ddos attack, was developed special for kill russian's resources :)  
+## Docker run (easy way)
+Install docker https://docs.docker.com/engine/install/
+```shell
+# with default urls and proxies
+docker run --ulimit nofile=100000:100000 -it imsamurai/ddoser
+# with custom params
+docker run --ulimit nofile=100000:100000 -it imsamurai/ddoser --target-urls-file sime.txt ... (check usage section)
+# help
+docker run --ulimit nofile=100000:100000 -it imsamurai/ddoser --help
+```
+Each run will update ddoser inside.
 ## Install
 ### Linux
 ```shell
