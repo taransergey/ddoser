@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+import resource
 import sys
 from collections import defaultdict
 from itertools import cycle
@@ -133,6 +134,7 @@ def main(
     config_logger(verbose, log_to_stdout)
     if not target_urls_file and not target_url:
         raise SystemExit('--target-url or --target-urls-file is required')
+    resource.setrlimit(resource.RLIMIT_NOFILE, (131072, 131072))
     proxies = load_proxies(proxy_file, proxy_url)
     target_urls = load_targets(target_urls_file)
     if target_url:
