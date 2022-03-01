@@ -114,6 +114,25 @@ def load_targets(target_urls_file: str) -> List[str]:
     return target_urls
 
 
+def set_limits():
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    limit = hard
+    while limit > soft:
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (limit, hard))
+            print(f'New limit of open files is {limit}')
+            return
+        except:
+            limit -= ((hard - soft) / 100) or 1
+    
+    print('Can not change limit of open files, if you get a message "too many open files"')
+    print('In linux/unix/mac you should run')
+    print('\t$ ulimit -n 100000')
+    print('In windows:')
+    print('\t$ mylimit=8000:')
+    print('\t$ sudo prlimit --nofile=$mylimit --pid $$; ulimit -n $mylimit')
+
+
 @click.command(help="Run ddoser")
 @click.option('--target-url', help='ddos target url')
 @click.option('--target-urls-file', help='path or url to file contains urls to ddos')
@@ -134,7 +153,7 @@ def main(
     config_logger(verbose, log_to_stdout)
     if not target_urls_file and not target_url:
         raise SystemExit('--target-url or --target-urls-file is required')
-    resource.setrlimit(resource.RLIMIT_NOFILE, (131072, 131072))
+    set_limits()
     proxies = load_proxies(proxy_file, proxy_url)
     target_urls = load_targets(target_urls_file)
     if target_url:
