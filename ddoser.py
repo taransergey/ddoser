@@ -2,7 +2,6 @@
 import asyncio
 import logging
 import os
-import resource
 import sys
 from collections import defaultdict
 from itertools import cycle
@@ -115,6 +114,12 @@ def load_targets(target_urls_file: str) -> List[str]:
 
 
 def set_limits():
+    try:
+        import resource
+    except ImportError:
+        print('Your platform does not supports setting limits for open files count', file=sys.stderr)
+        print('If you see a lot of errors like "Too meny open files" pls check README.md', file=sys.stderr)
+        return
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
     limit = hard
     while limit > soft:
