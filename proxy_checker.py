@@ -62,7 +62,7 @@ def main(
     set_limits()
     uvloop.install()
     loop = asyncio.get_event_loop()
-    proxies = load_proxies(None, proxy_url, protocol)
+    proxies = load_proxies(None, proxy_url, protocol=protocol)
     loop.run_until_complete(amain(proxies, check_url, result_proxy_file, concurrency, timeout))
 
 if __name__ == '__main__':

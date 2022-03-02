@@ -42,22 +42,23 @@ Usage: ddoser.py [OPTIONS]
   Run ddoser
 
 Options:
-  --target-url TEXT         ddos target url
+   --target-url TEXT         ddos target url
   --target-urls-file TEXT   path or url to file contains urls to ddos
   --proxy-url TEXT          url to proxy resourse
   --proxy-file TEXT         path to file with proxy list
   --concurrency INTEGER     concurrency level
   --count INTEGER           requests count (0 for infinite)
   --timeout INTEGER         requests timeout
-  --verbose                 Show verbose log
+  -v, --verbose             Show verbose log
+  --ignore-response         do not wait for response body
   --with-random-get-param   add random get argument to prevent cache usage
   --user-agent TEXT         custom user agent
-  --ignore-response         do not wait for response body
   --log-to-stdout           log to console
-  --random-xff-ip           set random ip address value for X-Forwarder-For header
   --restart-period INTEGER  period in seconds to restart application (reload proxies ans targets)
-  --custom-headers  JSON    set custom headers as json
-  --stop-attack  INT        stop the attack when the target is down after N tries
+  --random-xff-ip           set random ip address value for X-Forwarder-For header
+  --custom-headers TEXT     set custom headers as json
+  --stop-attack INTEGER     stop the attack when the target is down after N tries
+  --shuffle-proxy           Shuffle proxy list on application start
   --help                    Show this message and exit.
 ```
 proxy-file or proxy-url should contain proxy list in format like:

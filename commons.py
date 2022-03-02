@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 import sys
 from typing import List, Tuple
 
@@ -54,7 +55,7 @@ def set_limits():
     logging.error('\t$ sudo prlimit --nofile=$mylimit --pid $$; ulimit -n $mylimit')
 
 
-def load_proxies(proxy_file: str, proxy_url: str, protocol: str = None) -> List[Tuple[str, str, int]]:
+def load_proxies(proxy_file: str, proxy_url: str, protocol: str = None, shuffle: bool = None) -> List[Tuple[str, str, int]]:
     if proxy_url:
         logging.info('Loading proxy list from %s..', proxy_url)
         proxy_data = requests.get(proxy_url).text
@@ -71,5 +72,8 @@ def load_proxies(proxy_file: str, proxy_url: str, protocol: str = None) -> List[
             port = int(line.split(':')[-1].split('#')[0])
             proxies.append((type_, ip, port))
         logging.info('Loaded %s proxies', len(proxies))
+        if shuffle:
+            logging.debug('Shuffling proxies list')
+            random.shuffle(proxies)
         return proxies
     return None

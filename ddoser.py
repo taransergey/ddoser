@@ -141,12 +141,12 @@ def process(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, with_random_get_param: bool,
         user_agent: str, verbose: bool, ignore_response: bool, log_to_stdout: bool, random_xff_ip: bool,
-        custom_headers: str, stop_attack: int
+        custom_headers: str, stop_attack: int, shuffle_proxy: bool
 ):
     config_logger(verbose, log_to_stdout)
     uvloop.install()
     set_limits()
-    proxies = load_proxies(proxy_file, proxy_url)
+    proxies = load_proxies(proxy_file, proxy_url, shuffle=shuffle_proxy)
     target_urls = load_targets(target_urls_file)
     if target_url:
         target_urls.append(target_url)
@@ -187,11 +187,12 @@ def process(
 @click.option('--random-xff-ip', help='set random ip address value for X-Forwarder-For header', is_flag=True, default=False)
 @click.option('--custom-headers', help='set custom headers as json', default='{}', type=str)
 @click.option('--stop-attack', help='stop the attack when the target is down after N tries', type=int, default=0)
+@click.option('--shuffle-proxy', help='Shuffle proxy list on application start', is_flag=True, default=False)
 def main(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, verbose: bool, ignore_response: bool, with_random_get_param: bool,
         user_agent: str, log_to_stdout: str, restart_period: int, random_xff_ip: bool, custom_headers: str,
-        stop_attack: int
+        stop_attack: int, shuffle_proxy: bool
 ):
     config_logger(verbose, log_to_stdout)
     if not target_urls_file and not target_url:
@@ -202,7 +203,7 @@ def main(
             args=(target_url, target_urls_file, proxy_url, proxy_file,
                   concurrency, count, timeout, with_random_get_param,
                   user_agent, verbose, ignore_response, log_to_stdout, random_xff_ip, custom_headers,
-                  stop_attack)
+                  stop_attack, shuffle_proxy)
         )
         proc.start()
         proc.join(restart_period)
