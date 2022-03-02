@@ -51,8 +51,8 @@ Options:
   --with-random-get-param   add random get argument to prevent cache usage
   --user-agent TEXT         custom user agent
   --log-to-stdout           log to console
-  --restart-period INTEGER  period in seconds to restart application (reload
-                            proxies ans targets)
+  --random-xff-ip           set random ip address value for X-Forwarder-For header
+  --restart-period INTEGER  period in seconds to restart application (reload proxies ans targets)
   --help                    Show this message and exit.
 ```
 proxy-file or proxy-url should contain proxy list in format like:
