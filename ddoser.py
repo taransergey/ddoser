@@ -173,7 +173,7 @@ def process(
 @click.option('--restart-period', help='period in seconds to restart application (reload proxies ans targets)', type=int)
 @click.option('--random-xff-ip', help='set random ip address value for X-Forwarder-For header', is_flag=True, default=False)
 @click.option('--custom-headers', help='set custom headers as json', default='{}', type=str)
-@click.option('--stop-attack', help='stop attack when target down', type=int, default=0)
+@click.option('--stop-attack', help='stop the attack when the target is down after N tries', type=int, default=0)
 def main(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, verbose: bool, with_random_get_param: bool,

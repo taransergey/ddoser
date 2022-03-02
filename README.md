@@ -56,7 +56,7 @@ Options:
   --random-xff-ip           set random ip address value for X-Forwarder-For header
   --restart-period INTEGER  period in seconds to restart application (reload proxies ans targets)
   --custom-headers  JSON    set custom headers as json
-  --stop-attack  INT        stop attack after N error responses
+  --stop-attack  INT        stop the attack when the target is down after N tries
   --help                    Show this message and exit.
 ```
 proxy-file or proxy-url should contain proxy list in format like:
