@@ -1,5 +1,7 @@
 # The you seddoser
-Small application for ddos attack, was developed special for kill russian's resources :)  
+Small application for ddos attack, was developed special for kill russian's resources :)
+# Contacts
+If you have a questions or any proposal/bug thern pls contact us [ddoser telegram group](https://t.me/+eodJuvlTiK9hYWYy)
 ## Docker run (easy way)
 Install docker https://docs.docker.com/engine/install/
 ```shell
