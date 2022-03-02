@@ -35,7 +35,7 @@ async def make_request(url: str, proxy: str, timeout: int, headers: Dict[str, st
         client_session.headers.update(headers)
 
         async with client_session as session:
-            async with session.get(url) as response:
+            async with session.get(url, ssl=False) as response:
                 await response.text()
                 logging.info('Url: %s Proxy: %s Status: %s', url, proxy, response.status)
     except Exception as error:
