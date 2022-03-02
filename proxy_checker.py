@@ -51,17 +51,18 @@ async def amain(
 @click.option('--result-proxy-file', help='path to file with proxies have to be stored', required=True)
 @click.option('--concurrency', help='concurrency level', type=int, default=1)
 @click.option('--timeout', help='requests timeout', type=int, default=5)
+@click.option('--protocol', help='override proxy format', type=click.Choice(['socks4', 'socks5'], case_sensitive=False))
 @click.option('--verbose', help='Show verbose log', is_flag=True, default=False)
 @click.option('--log-to-stdout', help='log to console', is_flag=True)
 def main(
         proxy_url: str, check_url: str, result_proxy_file: str,
-        concurrency: int, timeout: int, verbose: bool, log_to_stdout: str
+        concurrency: int, timeout: int, protocol:str, verbose: bool, log_to_stdout: str
 ):
     config_logger(verbose, log_to_stdout)
     set_limits()
     uvloop.install()
     loop = asyncio.get_event_loop()
-    proxies = load_proxies(None, proxy_url)
+    proxies = load_proxies(None, proxy_url, protocol)
     loop.run_until_complete(amain(proxies, check_url, result_proxy_file, concurrency, timeout))
 
 if __name__ == '__main__':
