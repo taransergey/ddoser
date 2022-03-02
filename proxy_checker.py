@@ -52,7 +52,7 @@ async def amain(
 @click.option('--concurrency', help='concurrency level', type=int, default=1)
 @click.option('--timeout', help='requests timeout', type=int, default=5)
 @click.option('--protocol', help='override proxy format', type=click.Choice(['socks4', 'socks5'], case_sensitive=False))
-@click.option('--verbose', help='Show verbose log', is_flag=True, default=False)
+@click.option('--verbose', help='Show verbose log', count=True)
 @click.option('--log-to-stdout', help='log to console', is_flag=True)
 def main(
         proxy_url: str, check_url: str, result_proxy_file: str,

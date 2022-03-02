@@ -6,12 +6,22 @@ from typing import List, Tuple
 import requests as requests
 
 
+def get_log_level(verbose: int):
+    levels = [
+        logging.ERROR,
+        logging.WARNING,
+        logging.INFO,
+        logging.DEBUG,
+    ]
+    return levels[verbose] if verbose < len(levels) else levels[-1]
+
+
 def config_logger(verbose, log_to_stdout):
     kwargs = {}
     if not log_to_stdout:
         kwargs['filename'] = os.path.abspath(sys.argv[0]).split('.')[0] + '.log'
     logging.basicConfig(
-        level=logging.DEBUG if verbose else logging.ERROR,
+        level=get_log_level(verbose),
         format="[%(asctime)s] %(levelname)s:  %(message)s",
         datefmt="%d-%m-%Y %I:%M:%S",
         **kwargs

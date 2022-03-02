@@ -178,7 +178,7 @@ def process(
 @click.option('--concurrency', help='concurrency level', type=int, default=1)
 @click.option('--count', help='requests count (0 for infinite)', type=int, default=1)
 @click.option('--timeout', help='requests timeout', type=int, default=5)
-@click.option('--verbose', help='Show verbose log', is_flag=True, default=False)
+@click.option('-v', '--verbose', help='Show verbose log', count=True)
 @click.option('--ignore-response', help='do not wait for response body', is_flag=True, default=False)
 @click.option('--with-random-get-param', help='add random get argument to prevent cache usage', is_flag=True, default=False)
 @click.option('--user-agent', help='custom user agent')
