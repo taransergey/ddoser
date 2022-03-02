@@ -112,7 +112,7 @@ def load_targets(target_urls_file: str) -> List[str]:
                 target_urls.extend(line.strip() for line in res.text.split())
             except:
                 pass
-    logging.debug('Loaded %s targets to ddos', len(target_urls))
+    logging.info('Loaded %s targets to ddos', len(target_urls))
     return target_urls
 
 
