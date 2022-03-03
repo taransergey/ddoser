@@ -134,9 +134,9 @@ async def amain(
     await asyncio.gather(*coroutines)
 
 
-def load_targets(target_urls_file: str) -> List[str]:
+def load_targets(target_urls_files: Tuple[str]) -> List[str]:
     target_urls = []
-    if target_urls_file:
+    for target_urls_file in target_urls_files:
         if os.path.isfile(target_urls_file):
             with open(target_urls_file) as f:
                 target_urls.extend(line.strip() for line in f)
@@ -151,7 +151,7 @@ def load_targets(target_urls_file: str) -> List[str]:
 
 
 def process(
-        target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
+        target_url: Tuple[str], target_urls_file: Tuple[str], proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, with_random_get_param: bool,
         user_agent: str, verbose: bool, ignore_response: bool, log_to_stdout: bool, random_xff_ip: bool,
         custom_headers: str, stop_attack: int, shuffle_proxy: bool
@@ -161,8 +161,7 @@ def process(
     set_limits()
     proxies = load_proxies(proxy_file, proxy_url, shuffle=shuffle_proxy)
     target_urls = load_targets(target_urls_file)
-    if target_url:
-        target_urls.append(target_url)
+    target_urls.extend(target_url)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(
         amain(target_urls,
@@ -184,8 +183,8 @@ def process(
 
 
 @click.command(help="Run ddoser")
-@click.option('--target-url', help='ddos target url')
-@click.option('--target-urls-file', help='path or url to file contains urls to ddos')
+@click.option('--target-url', help='ddos target url', multiple=True)
+@click.option('--target-urls-file', help='path or url to file contains urls to ddos', multiple=True)
 @click.option('--proxy-url', help='url to proxy resourse')
 @click.option('--proxy-file', help='path to file with proxy list')
 @click.option('--concurrency', help='concurrency level', type=int, default=1)
