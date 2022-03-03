@@ -122,10 +122,9 @@ async def ddos(
 
 
 def log_stats():
-    if sum(STATS.values()) % 1000 == 0:
-        logging.critical(20 * '-')
-        logging.critical(json.dumps(URL_STATUS_STATS, indent=4))
-        logging.critical(20*'-')
+    if sum(STATS.values()) % 10000 == 0:
+        for target, statuses in URL_STATUS_STATS.items():
+            logging.critical(json.dumps({'target': target, **statuses}))
 
 
 async def amain(
