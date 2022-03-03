@@ -83,7 +83,7 @@ def parse_proxy(line: str, protocol) -> Proxy:
     regexp = re.compile(
         r'(?P<ip>[\w\.]+):(?P<port>\d+)(#(?P<protocol>\w+))?(\s+(?P<login>\w+):(?P<password>\w+))?'
     )
-    match = regexp.match(line)
+    match = regexp.match(line.strip())
     if match:
         proxy = Proxy(**match.groupdict())
         if protocol and not match.group('protocol'):
@@ -104,10 +104,11 @@ def load_proxies(proxy_file: str, proxy_url: str, protocol: str = None, shuffle:
     if proxy_data:
         proxies = []
         for line in proxy_data.split('\n'):
-            try:
-                proxies.append(parse_proxy(line, protocol))
-            except ValueError as error:
-                logging.error('Wrong proxy line format "%s"', error)
+            if line.strip():
+                try:
+                    proxies.append(parse_proxy(line, protocol))
+                except ValueError as error:
+                    logging.error('Wrong proxy line format "%s"', error)
         logging.info('Loaded %s proxies', len(proxies))
         if shuffle:
             logging.debug('Shuffling proxies list')
