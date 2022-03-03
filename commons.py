@@ -81,7 +81,7 @@ def parse_proxy(line: str, protocol) -> Proxy:
     """line format is ip:port[#protocol] [login]:[password]
     """
     regexp = re.compile(
-        r'(?P<ip>\d+.\d+.\d+.\d+):(?P<port>\d+)(#(?P<protocol>\w+))?(\s+(?P<login>\w+):(?P<password>\w+))?'
+        r'(?P<ip>[\w\.]+):(?P<port>\d+)(#(?P<protocol>\w+))?(\s+(?P<login>\w+):(?P<password>\w+))?'
     )
     match = regexp.match(line)
     if match:
@@ -103,7 +103,7 @@ def load_proxies(proxy_file: str, proxy_url: str, protocol: str = None, shuffle:
         proxy_data = None
     if proxy_data:
         proxies = []
-        for line in proxy_data.split():
+        for line in proxy_data.split('\n'):
             try:
                 proxies.append(parse_proxy(line, protocol))
             except ValueError as error:
