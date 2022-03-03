@@ -20,12 +20,15 @@ import aiohttp
 import click
 import requests as requests
 from aiohttp_socks import ProxyConnector
+from cachetools import TTLCache
 
+import ddos_guard
 from commons import config_logger, set_limits, load_proxies, Proxy
 
 STATS = defaultdict(int)
 URL_ERRORS_COUNT = defaultdict(int)
 URL_STATUS_STATS = defaultdict(lambda: defaultdict(int))
+DDOS_GUARD_COOKIE_CACHE = TTLCache(maxsize=100, ttl=60)
 
 
 async def make_request(url: str, proxy: Proxy, timeout: int, headers: Dict[str, str], ignore_response: bool):
@@ -44,7 +47,11 @@ async def make_request(url: str, proxy: Proxy, timeout: int, headers: Dict[str, 
         client_session.headers.update(headers)
 
         async with client_session as session:
-            async with session.get(url, ssl=False, **request_kwargs) as response:
+            cookies = DDOS_GUARD_COOKIE_CACHE.get(base_url)
+            async with session.get(url, cookies=cookies, ssl=False, **request_kwargs) as response:
+                if response.status == HTTPStatus.FORBIDDEN and base_url not in DDOS_GUARD_COOKIE_CACHE:
+                    ddos_guard_cookies = await ddos_guard.bypass(url, response.cookies, session=session)
+                    DDOS_GUARD_COOKIE_CACHE[base_url] = ddos_guard_cookies
                 URL_STATUS_STATS[base_url][response.status] += 1
                 if not ignore_response:
                     await response.text()
