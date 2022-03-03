@@ -103,7 +103,7 @@ def load_proxies(proxy_file: str, proxy_url: str, protocol: str = None, shuffle:
         proxy_data = None
     if proxy_data:
         proxies = []
-        for line in proxy_data.split('\n'):
+        for line in proxy_data.splitlines():
             if line.strip():
                 try:
                     proxies.append(parse_proxy(line, protocol))
