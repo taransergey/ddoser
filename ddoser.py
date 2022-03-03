@@ -226,14 +226,14 @@ def main(
     config_logger(verbose, log_to_stdout)
     if not target_urls_file and not target_url:
         raise SystemExit('--target-url or --target-urls-file is required')
+    custom_headers_dict = merge_headers(custom_headers, header)
     while True:
-        custom_headers = merge_headers(custom_headers, header)
         proc = multiprocessing.Process(
             target=process,
             args=(target_url, target_urls_file, proxy_url, proxy_file,
                   concurrency, count, timeout, with_random_get_param,
-                  user_agent, verbose, ignore_response, log_to_stdout, random_xff_ip, custom_headers,
-                  stop_attack, shuffle_proxy)
+                  user_agent, verbose, ignore_response, log_to_stdout, random_xff_ip,
+                  custom_headers_dict, stop_attack, shuffle_proxy)
         )
         proc.start()
         proc.join(restart_period)
