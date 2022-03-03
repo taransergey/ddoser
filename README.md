@@ -89,6 +89,6 @@ ulimit -n 100000
 ```
 ### WSL:
 ```shell
-mylimit=100000:
+mylimit=100000
 sudo prlimit --nofile=$mylimit --pid $$; ulimit -n $mylimit
 ```

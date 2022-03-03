@@ -73,7 +73,7 @@ def set_limits():
     logging.error('In linux/unix/mac you should run')
     logging.error('\t$ ulimit -n 100000')
     logging.error('In WSL:')
-    logging.error('\t$ mylimit=10000:')
+    logging.error('\t$ mylimit=100000')
     logging.error('\t$ sudo prlimit --nofile=$mylimit --pid $$; ulimit -n $mylimit')
 
 
