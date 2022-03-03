@@ -1,3 +1,7 @@
+"""
+Based on https://git.gay/a/ddos-guard-bypass/src/branch/master/index.js
+"""
+
 import logging
 import re
 import urllib.parse
