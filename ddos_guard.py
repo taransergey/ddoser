@@ -6,6 +6,7 @@ import logging
 import re
 import urllib.parse
 from http import HTTPStatus
+from http.cookies import SimpleCookie
 
 from aiohttp import ClientSession
 
@@ -64,7 +65,9 @@ async def bypass(url: str, cookies=None, *, session: ClientSession):
     }
 
     async with session.get(ddos_guard_url, cookies=cookies, headers=headers_3) as response_3:
-        ddos_guard_cookies = response_3.cookies
+        ddos_guard_cookies = SimpleCookie()
+        ddos_guard_cookies.update(cookies)
+        ddos_guard_cookies.update(response_3.cookies)
 
     logging.info("[ddos_guard.bypass] Retrieved final cookies from %r: %r", ddos_guard_url, ddos_guard_cookies)
     return ddos_guard_cookies
