@@ -52,8 +52,7 @@ async def make_request(url: str, proxy: Proxy, timeout: int, headers: Dict[str, 
                 logging.info('Url: %s Proxy: %s Status: %s', url, proxy, response.status)
 
     except Exception as error:
-        error_message = f"Proxy: {proxy} Error: {error}"
-        logging.warning('Url: %s Proxy: %s Error: %s', url, proxy, error)
+        logging.warning('Url: %s Proxy: %s Error(%s): %s', url, proxy, type(error), error)
         STATS[f'{type(error)}'] += 1
         URL_ERRORS_COUNT[base_url] += 1
         URL_STATUS_STATS[base_url]['other_error'] += 1
