@@ -6,11 +6,11 @@ If you have a questions or any proposal/bug thern pls contact us [ddoser telegra
 Install docker https://docs.docker.com/engine/install/
 ```shell
 # with default urls and proxies
-docker run --ulimit nofile=100000:100000 -it imsamurai/ddoser
+docker run --pull always --ulimit nofile=100000:100000 -it imsamurai/ddoser
 # with custom params
-docker run --ulimit nofile=100000:100000 -it imsamurai/ddoser --target-urls-file sime.txt ... (check usage section)
+docker run --pull always --ulimit nofile=100000:100000 -it imsamurai/ddoser --target-urls-file sime.txt ... (check usage section)
 # help
-docker run --ulimit nofile=100000:100000 -it imsamurai/ddoser --help
+docker run --pull always --ulimit nofile=100000:100000 -it imsamurai/ddoser --help
 ```
 Each run will update ddoser inside.
 ## Install
