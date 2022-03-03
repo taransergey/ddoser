@@ -9,33 +9,37 @@ import click
 import uvloop
 from aiohttp_socks import ProxyConnector
 
-from commons import config_logger, set_limits, load_proxies
+from commons import config_logger, set_limits, load_proxies, Proxy
 
 
 async def checker(
-        proxy_iterator: Iterable[Tuple[str, str, int]], check_url: str, result_proxy_file: TextIO, timeout: int
+        proxy_iterator: Iterable[Proxy], check_url: str, result_proxy_file: TextIO, timeout: int
 ):
     timeout = aiohttp.ClientTimeout(total=timeout)
-    for type_, ip, port in proxy_iterator:
-        proxy = f'{type_}://{ip}:{port}'
+    for proxy in proxy_iterator:
         logging.info('Checking %s..', proxy)
         try:
-            connector = ProxyConnector.from_url(proxy)
-            async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
-                async with session.get(check_url) as response:
+            request_kwarg = {}
+            if proxy.protocol in ('socks4', 'socks5'):
+                connector = ProxyConnector.from_url(proxy.get_formatted())
+                client_session = aiohttp.ClientSession(connector=connector, timeout=timeout)
+            else:
+                request_kwarg['proxy'] = proxy.get_formatted()
+            async with client_session as session:
+                async with session.get(check_url, **request_kwarg) as response:
                     if response.status == HTTPStatus.OK:
                         if (await response.text()).strip() == 'PONG':
-                            logging.info('%s is OK', proxy)
-                            result_proxy_file.write(f'{ip}:{port}#{type_}\n')
+                            logging.info('%s is OK', proxy.get_formatted())
+                            result_proxy_file.write(f'{proxy}\n')
                             result_proxy_file.flush()
                         else:
                             logging.info('%s is bad: returns wrong data', proxy)
         except Exception as error:
-            logging.info('%s is bad: %s (%s)', proxy, type(error), error)
+            logging.info('%s is bad: %s (%s)', proxy.get_formatted(), type(error), error)
 
 
 async def amain(
-        proxies: List[Tuple[str, str, int]], check_url: str, result_proxy_file: str, concurrency: int, timeout: int
+        proxies: List[Proxy], check_url: str, result_proxy_file: str, concurrency: int, timeout: int
 ):
     coroutines = []
     proxy_iterator = iter(proxies)
@@ -51,8 +55,8 @@ async def amain(
 @click.option('--result-proxy-file', help='path to file with proxies have to be stored', required=True)
 @click.option('--concurrency', help='concurrency level', type=int, default=1)
 @click.option('--timeout', help='requests timeout', type=int, default=5)
-@click.option('--protocol', help='override proxy format', type=click.Choice(['socks4', 'socks5'], case_sensitive=False))
-@click.option('--verbose', help='Show verbose log', count=True)
+@click.option('--protocol', help='override proxy format', type=click.Choice(['socks4', 'socks5', 'http', 'https'], case_sensitive=False))
+@click.option('-v', '--verbose', help='Show verbose log', count=True)
 @click.option('--log-to-stdout', help='log to console', is_flag=True)
 def main(
         proxy_url: str, check_url: str, result_proxy_file: str,
