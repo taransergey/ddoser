@@ -201,7 +201,7 @@ def merge_headers(custom_headers: str, header: List[Tuple[str, str]]) -> Dict[st
 @click.command(help="Run ddoser")
 @click.option('--target-url', help='ddos target url', multiple=True)
 @click.option('--target-urls-file', help='path or url to file contains urls to ddos', multiple=True)
-@click.option('--proxy-url', help='url to proxy resourse')
+@click.option('--proxy-url', help='url to proxy resourсe')
 @click.option('--proxy-file', help='path to file with proxy list')
 @click.option('--concurrency', help='concurrency level', type=int, default=1)
 @click.option('--count', help='requests count (0 for infinite)', type=int, default=1)
