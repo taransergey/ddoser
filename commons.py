@@ -77,22 +77,35 @@ def set_limits():
     logging.error('\t$ sudo prlimit --nofile=$mylimit --pid $$; ulimit -n $mylimit')
 
 
-def parse_proxy(line: str, protocol) -> Proxy:
-    """line format is ip:port[#protocol] [login]:[password]
+def parse_proxy(line: str, protocol: str, regexp: re.Pattern) -> Proxy:
+    """line format be default is 'ip:port[#protocol] [login]:[password]'
     """
-    regexp = re.compile(
-        r'(?P<ip>[\w\.]+):(?P<port>\d+)(#(?P<protocol>\w+))?(\s+(?P<login>\w+):(?P<password>\w+))?'
-    )
     match = regexp.match(line.strip())
     if match:
-        proxy = Proxy(**match.groupdict())
-        if protocol and not match.group('protocol'):
-            proxy.protocol = protocol
+        proxy_data = match.groupdict()
+        if protocol and not proxy_data.get('protocol'):
+            proxy_data['protocol'] = protocol
+        proxy = Proxy(**proxy_data)
         return proxy
     raise ValueError(line)
 
 
-def load_proxies(proxy_file: str, proxy_url: str, protocol: str = None, shuffle: bool = None) -> List[Proxy]:
+def get_proxy_regex(custom_format: str) -> re.Pattern:
+    if custom_format:
+        escaped = re.escape(custom_format)
+        for name in ('ip', 'protocol', 'login', 'password'):
+            escaped = escaped.replace(f'\\{{{name}\\}}', rf'(?P<{name}>[^\s]+)')
+        escaped = escaped.replace('\\{port\\}', r'(?P<port>\d+)')
+        escaped = escaped.replace(r'\ ', r'\s+')
+        return re.compile(escaped)
+    return re.compile(
+        r'(?P<ip>[\w\.]+):(?P<port>\d+)(#(?P<protocol>\w+))?(\s+(?P<login>\w+):(?P<password>\w+))?'
+    )
+
+
+def load_proxies(
+        proxy_file: str, proxy_url: str, protocol: str = None, shuffle: bool = None, custom_format: str = None
+) -> List[Proxy]:
     if proxy_url:
         logging.info('Loading proxy list from %s..', proxy_url)
         proxy_data = requests.get(proxy_url).text
@@ -103,10 +116,11 @@ def load_proxies(proxy_file: str, proxy_url: str, protocol: str = None, shuffle:
         proxy_data = None
     if proxy_data:
         proxies = []
+        proxy_regex = get_proxy_regex(custom_format)
         for line in proxy_data.splitlines():
             if line.strip():
                 try:
-                    proxies.append(parse_proxy(line, protocol))
+                    proxies.append(parse_proxy(line, protocol, proxy_regex))
                 except ValueError as error:
                     logging.error('Wrong proxy line format "%s"', error)
         logging.info('Loaded %s proxies', len(proxies))
