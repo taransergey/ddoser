@@ -120,7 +120,9 @@ def load_proxies(
         for line in proxy_data.splitlines():
             if line.strip():
                 try:
-                    proxies.append(parse_proxy(line, protocol, proxy_regex))
+                    proxy = parse_proxy(line, protocol, proxy_regex)
+                    if proxy.protocol in ('socks5', 'socks4'):
+                        proxies.append(proxy)
                 except ValueError as error:
                     logging.error('Wrong proxy line format "%s"', error)
         logging.info('Loaded %s proxies', len(proxies))
