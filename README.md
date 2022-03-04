@@ -60,6 +60,8 @@ Options:
   --stop-attack INTEGER        stop the attack when the target is down after N tries
   --shuffle-proxy              Shuffle proxy list on application start
   -H, --header <TEXT TEXT>...  custom header
+  --proxy-custom-format TEXT   custom proxy format like "{protocol}://{ip}:{port} {login}:{password}"
+                               (ip and port is required, protocol can be set by --protocol)
   --help                       Show this message and exit.
 ```
 proxy-file or proxy-url should contain proxy list in format like:
