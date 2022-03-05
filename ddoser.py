@@ -5,6 +5,7 @@ import multiprocessing
 import re
 from http import HTTPStatus
 
+import httpx
 import uvloop
 import logging
 import os
@@ -16,10 +17,9 @@ import urllib.parse as urlparse
 from urllib.parse import urlencode
 
 
-import aiohttp
 import click
 import requests as requests
-from aiohttp_socks import ProxyConnector
+from httpx_socks import AsyncProxyTransport
 
 from commons import config_logger, set_limits, load_proxies, Proxy
 
@@ -29,31 +29,23 @@ URL_STATUS_STATS = defaultdict(lambda: defaultdict(int))
 
 
 async def make_request(url: str, proxy: Proxy, timeout: int, headers: Dict[str, str], ignore_response: bool):
-    timeout = aiohttp.ClientTimeout(total=timeout)
-    logging.debug('Url: %s Proxy: %s header: %s', url, proxy, headers)
+    timeout = httpx.Timeout(timeout=timeout)
+    logging.debug('Url: %s Proxy: %s header: %s', url, proxy.get_formatted(), headers)
     base_url = url.split('?', 1)[0]
     try:
-        request_kwargs = {}
-        if proxy and proxy.protocol in ('socks4', 'socks5'):
-            connector = ProxyConnector.from_url(proxy.get_formatted())
-            client_session = aiohttp.ClientSession(connector=connector, timeout=timeout)
-        else:
-            if proxy:
-                request_kwargs['proxy'] = proxy.get_formatted()
-            client_session = aiohttp.ClientSession(timeout=timeout)
-        client_session.headers.update(headers)
+        kwargs = {}
+        if proxy:
+            kwargs['transport'] = AsyncProxyTransport.from_url(proxy.get_formatted())
 
-        async with client_session as session:
-            async with session.get(url, ssl=False, **request_kwargs) as response:
-                URL_STATUS_STATS[base_url][response.status] += 1
-                if not ignore_response:
-                    await response.text()
-                if response.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
-                    URL_ERRORS_COUNT[base_url] += 1
-                logging.info('Url: %s Proxy: %s Status: %s', url, proxy, response.status)
+        async with httpx.AsyncClient(**kwargs, headers=headers, timeout=timeout) as client:
+            response: httpx.Response = await client.get(url)
+            URL_STATUS_STATS[base_url][response.status_code] += 1
+            if response.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR:
+                URL_ERRORS_COUNT[base_url] += 1
+            logging.info('Url: %s Proxy: %s Status: %s', url, proxy.get_formatted(), response.status_code)
 
     except Exception as error:
-        logging.warning('Url: %s Proxy: %s Error(%s): %s', url, proxy, type(error), error)
+        logging.warning('Url: %s Proxy: %s Error(%s): %s', url, proxy.get_formatted(), type(error), error)
         STATS[f'{type(error)}'] += 1
         URL_ERRORS_COUNT[base_url] += 1
         URL_STATUS_STATS[base_url]['other_error'] += 1
