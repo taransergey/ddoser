@@ -51,9 +51,9 @@ async def make_request(url: str, proxy: Proxy, timeout: int, headers: Dict[str, 
             cookies = DDOS_GUARD_COOKIE_CACHE.get(base_url)
             async with session.get(url, cookies=cookies, ssl=False, **request_kwargs) as response:
                 if not ignore_response:
-                    data = await response.text()
-                if response.status == HTTPStatus.FORBIDDEN and response.headers["server"] == "ddos-guard":
-                    ddos_guard_cookies, response = await ddos_guard.bypass(url, response.cookies, session, ignore_response)
+                    await response.text()
+                if response.status == HTTPStatus.FORBIDDEN and response.headers["server"].lower() == "ddos-guard":
+                    ddos_guard_cookies, response = await ddos_guard.bypass(url, response.cookies, session=session, ignore_response=ignore_response)
                     DDOS_GUARD_COOKIE_CACHE[base_url] = ddos_guard_cookies
                 URL_STATUS_STATS[base_url][response.status] += 1
                 if response.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
