@@ -1,0 +1,35 @@
+---
+- name: Clone ddoser repo
+  git:
+    repo: "{{ddoser_git_url}}"
+    dest: "{{ddoser_work_dir}}"
+    accept_hostkey: true
+    force: true
+    version: "main"
+
+- name: Stop all containers
+  shell: "docker-compose down"
+  args:
+    chdir: "{{ddoser_work_dir}}"
+  ignore_errors: yes
+
+- name: Remove old uashield images
+  shell: "docker rmi -f imsamurai/ddoser"
+  ignore_errors: yes
+
+- name: Increase ulimit
+  shell: "ulimit -n 1000000"
+
+- name: Run ddoser
+  shell: "docker-compose up -d"
+  args:
+    chdir: "{{ddoser_work_dir}}"
+
+- name: Check docker started
+  shell: "docker ps"
+  args:
+    chdir: "{{ddoser_work_dir}}"
+  register: output
+
+- ansible.builtin.debug:
+        var: output

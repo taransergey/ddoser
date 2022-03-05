@@ -1,0 +1,11 @@
+---
+##@ref https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html#variables-and-vaults
+
+#Docker
+
+docker_users: []
+
+#Ddoser
+
+ddoser_git_url: "https://github.com/taransergey/ddoser"
+ddoser_work_dir: /root/ddoser/
