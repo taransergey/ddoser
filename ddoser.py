@@ -21,6 +21,7 @@ import click
 import requests as requests
 from aiohttp_socks import ProxyConnector
 from cachetools import TTLCache
+from datetime import datetime, timedelta
 
 import ddos_guard
 from commons import config_logger, set_limits, load_proxies, Proxy
@@ -28,7 +29,7 @@ from commons import config_logger, set_limits, load_proxies, Proxy
 STATS = defaultdict(int)
 URL_ERRORS_COUNT = defaultdict(int)
 URL_STATUS_STATS = defaultdict(lambda: defaultdict(int))
-DDOS_GUARD_COOKIE_CACHE = TTLCache(maxsize=100, ttl=60)
+DDOS_GUARD_COOKIE_CACHE = TTLCache(maxsize=100, ttl=timedelta(hours=1), timer=datetime.now) # 3h is min __ddg5 lifetime, __ddg2 lives 1 year
 
 
 async def make_request(url: str, proxy: Proxy, timeout: int, headers: Dict[str, str], ignore_response: bool):
@@ -49,12 +50,12 @@ async def make_request(url: str, proxy: Proxy, timeout: int, headers: Dict[str, 
         async with client_session as session:
             cookies = DDOS_GUARD_COOKIE_CACHE.get(base_url)
             async with session.get(url, cookies=cookies, ssl=False, **request_kwargs) as response:
-                if response.status == HTTPStatus.FORBIDDEN and base_url not in DDOS_GUARD_COOKIE_CACHE:
-                    ddos_guard_cookies = await ddos_guard.bypass(url, response.cookies, session=session)
+                if not ignore_response:
+                    data = await response.text()
+                if response.status == HTTPStatus.FORBIDDEN and response.headers["server"] == "ddos-guard":
+                    ddos_guard_cookies, response = await ddos_guard.bypass(url, response.cookies, session, ignore_response)
                     DDOS_GUARD_COOKIE_CACHE[base_url] = ddos_guard_cookies
                 URL_STATUS_STATS[base_url][response.status] += 1
-                if not ignore_response:
-                    await response.text()
                 if response.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
                     URL_ERRORS_COUNT[base_url] += 1
                 logging.info('Url: %s Proxy: %s Status: %s', url, proxy, response.status)
