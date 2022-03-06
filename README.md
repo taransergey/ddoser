@@ -35,6 +35,12 @@ git clone https://github.com/taransergey/ddoser.git
 cd ddoser/
 pip install -r requirements.txt
 ```
+### install by helper script
+Also you can install in Linux by command:
+```shell
+curl https://raw.githubusercontent.com/taransergey/ddoser/main/ddoser_install.sh | sh
+```
+
 ## Run
 ```shell
 Usage: ddoser.py [OPTIONS]
