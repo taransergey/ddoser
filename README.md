@@ -14,14 +14,12 @@ docker run --pull always --ulimit nofile=100000:100000 -it imsamurai/ddoser --he
 ```
 Each run will update ddoser inside.
 ## Install
-### Linux
+### Debian/Ubuntu
 ```shell
-sudo apt install python3
-sudo apt install python3-pip
-git clone https://github.com/taransergey/ddoser.git
-cd ddoser/
-pip install -r requirements.txt
+sudo apt-get update && sudo apt-get install -y git && \
+git clone https://github.com/taransergey/ddoser.git && cd ddoser && ./install.sh
 ```
+
 ### MacOs
 Download and install python3.7-3.9 form here https://www.python.org/downloads/macos/ if you don't have it
 or install by brew
@@ -42,6 +40,14 @@ curl https://raw.githubusercontent.com/taransergey/ddoser/main/ddoser_install.sh
 ```
 
 ## Run
+### Default options
+
+```shell
+./run.sh
+```
+
+### Custom parameters
+
 ```shell
 Usage: ddoser.py [OPTIONS]
 
