@@ -64,7 +64,7 @@ Options:
   -v, --verbose                Show verbose log
   --ignore-response            do not wait for response body
   --with-random-get-param      add random get argument to prevent cache usage
-  --user-agent TEXT            custom user agent
+  --user-agent TEXT            [OPTIONAL] custom user agent. If skipped - random UA string will be generated for each request.
   --log-to-stdout              log to console
   --restart-period INTEGER     period in seconds to restart application (reload proxies ans targets)
   --random-xff-ip              set random ip address value for X-Forwarder-For header
