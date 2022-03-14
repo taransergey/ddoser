@@ -118,7 +118,15 @@ async def ddos(
     while True:
         if count and step > count:
             break
-        if stop_attack and URL_ERRORS_COUNT[target_url] > stop_attack:
+
+        error_count = URL_ERRORS_COUNT[target_url]
+        if stop_attack and error_count > stop_attack:
+            logging.warning(
+                "Stopping attack on %s as the error count %d is more than the threshold %d",
+                target_url,
+                error_count,
+                stop_attack,
+            )
             break
         step += 1
         proxy = get_proxy(proxy_iterator)
