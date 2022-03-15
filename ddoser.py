@@ -119,7 +119,8 @@ async def ddos(
         if count and step > count:
             break
 
-        error_count = URL_ERRORS_COUNT[target_url]
+        base_url = target_url.split('?', 1)[0]
+        error_count = URL_ERRORS_COUNT[base_url]
         if stop_attack and error_count > stop_attack:
             logging.warning(
                 "Stopping attack on %s as the error count %d is more than the threshold %d",
